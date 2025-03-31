@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv= "Content-Type" content= "text/html; charset=UTF-8" />
+</head>
+
+<style>
+* :not(style, script){
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	
+	color: #ffffff;
+	font-size: xx-large;
+	font-family: monospace;
+	white-space: nowrap;
+	
+	border-radius: 0.25em;
+	overflow: hidden;
+}
+
+body {
+	background: #112233;
+}
+
+.pane {
+	margin: 0.25em;
+	background: #222222;
+}
+
+.capt {
+	padding: 0.25em;
+	background: #222222;
+}
+
+.cont {
+	padding: 0.25em;
+	background: #555555;
+}
+
+.button {
+	border: none;
+	padding: 0.25em;
+	background: #223311;
+}
+
+.button:hover {
+	background: #111111;
+}
+</style>
+
+<script>
+class ajax {
+	/** Object network id. */
+	id;
+		
+	/** Send array of args. Example: send([1, "test", "hello"]); */
+	send(args)
+	{
+		/** Example of generated request: /?id=0&a1=1&a2=test&a3=hello. */
+		var request = "/?id=" + encodeURIComponent(this.id);
+		for (var i = 0; i < args.length; i++) {
+			request += "&a" + (i + 1) + "="
+				+ encodeURIComponent(args[i]);
+		}
+		
+		/** Log URI if we're running this page standalone. */
+		if(window.location.protocol == 'file:') {
+			console.log("send|    " + request);
+			return;
+		}
+		
+		/** Create XMLHTTP request. */
+		const xhttp = new XMLHttpRequest();
+		xhttp.sender = this;
+		
+		/** What to do on response. */
+		xhttp.onload = function()
+		{
+			if (this.responseText.length <= 0)
+				return;
+
+			console.log("recv|    " + request);
+			var args = JSON.parse(this.responseText);
+			xhttp.sender.on_recv(args);
+		}
+
+		xhttp.open("GET", request, true);
+		xhttp.send();
+	}
+	
+	/** Auto send interval. */
+	#interval = 0;
+	#interval_timer;
+	
+	set interval(value)
+	{
+		this.#interval = value;
+		clearInterval(this.#interval_timer);
+		if (value <= 0) return;
+		
+		this.#interval_timer = setInterval(
+			() => { this.on_interval(); },
+			this.#interval
+		);
+	}
+	
+	get interval() { return this.#interval; }
+	
+	/** Callbacks. */
+	on_recv(args) {	 }
+	on_interval(args) { this.send([]); }
+}
+</script>
+
+<body>
+	
+<script>
+	bms_info = new ajax();
+	bms_info.id = 0;
+	bms_info.interval = 1000;
+	bms_info.on_recv = function (args) 
+	{
+		document.getElementById("bms_soh").innerHTML =
+			"Значення SOH: " + args[0] + "%";
+		
+		document.getElementById("bms_voltage").innerHTML =
+			"Напруга: " + args[1] + "V";
+
+		document.getElementById("bms_current").innerHTML =
+			"Cтрум: " + args[3] + "A";
+			
+		document.getElementById("bms_temp").innerHTML =
+			"Температура: " + args[4] + "C";
+			
+		document.getElementById("bms_max_current").innerHTML =
+			"Макс. вхід: " + args[5] + "А";
+			
+		document.getElementById("bms_min_cell").innerHTML =
+			"Мін. ячей: " + args[6] + "V";
+			
+		document.getElementById("bms_max_cell").innerHTML =
+			"Макс: " + args[7] + "V (d=" + parseFloat(args[7] - args[6]).toFixed(3) + ")";
+
+		document.getElementById("bms_capacity").innerHTML =
+			"Ємність: " + parseFloat(args[8]).toFixed(1) + "kWh (" + parseFloat(args[8] * 1000 / 96 / 3.6).toFixed(1) + "aH)";
+	};
+
+	/*setTimeout(()=> {
+		bms_info.on_recv([0, 0, 0, 0, 0, 0, 0, 0, 0]);
+	} ,3000);*/
+</script>
+
+<div class = "pane">
+	<div class = "capt" style>Інформація про батарею</div>
+	<div class = "cont" style = "flex-direction:row">
+		<div style = "align-items: end">
+			<div id = "bms_soh">Інформація про батарею відсутня</div>
+			<div id = "bms_voltage"></div>
+			<div id = "bms_current"></div>
+			<div id = "bms_temp"></div>
+		</div>
+		
+		<div style = "align-items: end">
+			<div id = "bms_max_current"></div>
+			<div id = "bms_min_cell"></div>
+			<div id = "bms_max_cell"></div>
+			<div id = "bms_capacity"></div>
+		</div>
+	</div>
+</div>
+
+<div class = "pane">
+	<div class = "capt">Оновити прошивку</div>
+	<div class = "cont">
+		<iframe name= "hidden-iframe" style= "display: none;"></iframe>
+		<form method= "post" enctype= "multipart/form-data" target = "hidden-iframe" action = "update" style= "display:contents">
+			<input type= "file" class = "layout" id= "file" name= "file">
+			<button class = "button">Підтвердити</button>
+		</form>
+	</div>
+</div>
+
+</body>
+</html>

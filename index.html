@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<title>CanBOX</title>
+
+<style>
+* :not(title):not(style):not(script) {
+	display: flex;
+	flex-direction: column;
+	font-family: monospace;
+	/* font-weight: bold; */
+	color: white;
+	white-space: nowrap;
+	font-size: calc(1vmin + 1vmax);
+	min-width: fit-content;
+	user-select: none;
+}
+
+body {
+	flex-direction: row !important;
+	flex-wrap: wrap !important;
+	background: linear-gradient(45deg, black, rgb(32, 75, 80));
+	background-attachment: fixed;
+	background: rgb(45, 45, 45);
+}
+
+.lay {
+	flex: 1;
+	flex-wrap: wrap;
+}
+
+@keyframes slide_left {
+	0% {margin: 10em}
+}
+
+.pane {
+	animation: 1s ease-out 0s 1 slide_left;
+	flex: 1 1 0em;
+	border-radius: 1em;
+	/* background: rgb(51, 68, 85); */
+	background: rgb(15, 15, 15);
+	margin: 0.5em;
+	box-shadow: rgb(0 0 0) 0.1em 0.1em 0.5em;
+}
+
+.pane_capt {
+	align-items: center;
+	border-radius: 1em;
+	flex-direction: row;
+	background: linear-gradient(90deg, black, transparent);
+}
+
+.pane_text {
+	padding: 0.2em;
+	font-size: 2em;
+}
+
+.pane_tool {
+	margin-left: auto;
+}
+
+.pane_cont {
+	flex-wrap: wrap;
+	flex-direction: row;
+	align-items: end;
+	min-height: 1em;
+}
+
+.text {
+	/* filter: drop-shadow(black 0.2em 0.4em 0.6em); */
+	padding: 1em;
+}
+
+.field {
+	flex: 1;
+	color: #000000;
+	text-align-last: center;
+	font-size: 2em;
+	border-radius: 1em;
+	margin: 0.25em;
+}
+
+.button {
+	/* filter: drop-shadow(black 0.2em 0.4em 0.6em); */
+	background: rgb(45, 45, 45);
+	padding: 0.5em;
+	border-radius: 1em;
+	margin: 0.5em;
+	width: -webkit-fill-available;
+	min-width: 4em;
+	align-items: center;
+}
+
+.button:active {
+	background: linear-gradient(270deg, black, red);
+}
+
+@keyframes blur_anim {
+	to {
+		border-radius: unset;
+		backdrop-filter: blur(2px) brightness(0.75) grayscale(0.75);
+	}
+}
+
+.blur {
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	position: fixed;
+	
+	animation: blur_anim 1s forwards;
+}
+
+.popup {
+	position: fixed;
+	width: fit-content;
+	height: fit-content;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%)
+}
+
+.lds-dual-ring {
+	display: inline-block;
+	width: 80px;
+	height: 80px;
+}
+.lds-dual-ring:after {
+	content: " ";
+	display: block;
+	width: 64px;
+	height: 64px;
+	margin: 8px;
+	border-radius: 50%;
+	border: 6px solid #fff;
+	border-color: #fff transparent #fff transparent;
+	animation: lds-dual-ring 1.2s linear infinite;
+}
+@keyframes lds-dual-ring {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+</style>
+</head>
+
+<body>
+<script>
+class ajax {
+	/** Object network id. */
+	#id;
+	set id(id) { this.#id = id; this.on_id_change(id); }
+	get id() { return this.#id; }
+		
+	/** Send array of args. Example: send([1, "test", "hello"]); */
+	send(args)
+	{
+		if (this.#id == undefined)
+			return;
+		
+		/** Example of generated request: /?id=0&a1=1&a2=test&a3=hello. */
+		var request = "/?id=" + encodeURIComponent(this.#id);
+		for (var i = 0; i < args.length; i++) {
+			request += "&a" + (i + 1) + "="
+				+ encodeURIComponent(args[i]);
+		}
+		
+		/** Log URI if we're running this page standalone. */
+		if(window.location.protocol == 'file:') {
+			console.log("send|    " + request);
+			return;
+		}
+		
+		/** Create XMLHTTP request. */
+		const xhttp = new XMLHttpRequest();
+		xhttp.sender = this;
+		
+		/** What to do on response. */
+		xhttp.onload = function()
+		{
+			if (this.responseText.length <= 0)
+				return;
+
+			console.log("recv|    " + request);
+			var args = JSON.parse(this.responseText);
+			xhttp.sender.on_recv(args);
+		}
+
+		xhttp.open("GET", request, true);
+		xhttp.send();
+	}
+	
+	/** Auto send interval. */
+	#interval = 0;
+	#interval_timer;
+	
+	set interval(value)
+	{
+		this.#interval = value;
+		clearInterval(this.#interval_timer);
+		if (value <= 0) return;
+		
+		this.#interval_timer = setInterval(
+			() => { this.on_interval(); },
+			this.#interval
+		);
+	}
+	
+	get interval() { return this.#interval; }
+	
+	/** Callbacks. */
+	on_recv(args) {	 }
+	on_interval(args) { this.send([]); }
+	on_id_change(id) { this.send([]); }
+}
+
+function generic_create(parent, class_name)
+{
+	const g = document.createElement("div");
+	g.className = class_name;
+	parent.appendChild(g);
+	
+	g.ajax = new ajax();
+
+	return g;
+}
+
+function layout_create(parent, direction)
+{	
+	const layout = generic_create(parent, "lay");
+	layout.style.flexDirection = (direction == "h") ? "row" : "column";
+	return layout;
+}
+
+function pane_create(parent, caption)
+{	
+	const pane = generic_create(parent, "pane");
+	
+	pane.caption = generic_create(pane, "pane_capt");
+	pane.text = generic_create(pane.caption, "pane_text");
+	pane.text.innerHTML = caption;
+	pane.toolbar = generic_create(pane.caption, "pane_tool");
+	
+	pane.content = generic_create(pane, "pane_cont");
+	
+	return pane;
+}
+
+function subpane_create(parent, caption)
+{
+	const pane = pane_create(parent, caption);
+	//pane.style.boxShadow = "none";
+	pane.text.style.fontSize = "1em";
+	return pane;
+}
+
+function popup_create(parent, caption) {
+	const blur = generic_create(parent, "blur");
+	const popup = pane_create(blur, caption);
+	popup.classList.add("popup");
+	
+	blur.caption = popup.caption;
+	blur.content = popup.content;
+	
+	return blur;
+};
+
+function text_create(parent, text)
+{
+	const e = generic_create(parent, "text");
+	e.innerHTML = text;
+	return e;
+}
+
+function button_create(parent, text)
+{
+	var button = generic_create(parent, "button");
+	button.innerHTML = text;
+	
+	/** custom event. */
+	button.on_press = function() {}
+	
+	/** Set ajax event for this checkbox. */
+	button.onclick = function()
+	{
+		this.on_press();
+		this.ajax.send([1]);
+	}
+		
+	button.ajax.on_id_change = function(id) {};
+
+	return button;
+}
+
+function checkbox_create(parent, state)
+{
+	const checkbox = generic_create(parent, "button");
+	
+	/** Change switcher internal state. */
+	checkbox.set_state = function(state)
+	{
+		checkbox.state = state;
+		
+		if (state) {
+			checkbox.style.background = "#113311";
+			checkbox.innerHTML = "&#10003";
+		} else {
+			checkbox.style.background = "#331111";
+			checkbox.innerHTML = "&#10007";
+		}
+	}
+	
+	checkbox.set_state(state);
+
+	/** custom event. */
+	checkbox.on_check = function(state) {}
+	
+	/** Set ajax event for this checkbox. */
+	checkbox.onclick = function()
+	{
+		checkbox.set_state(!checkbox.state);
+		checkbox.on_check(checkbox.state);
+		checkbox.ajax.send([checkbox.state ? 1 : 0]);
+	}
+		
+	checkbox.ajax.interval = 5000;
+	checkbox.ajax.on_recv = function(args)
+	{
+		checkbox.set_state(args[0]);
+		checkbox.on_check(args[0]);
+	}
+	
+	return checkbox;
+}
+
+function field_create(parent, value)
+{
+	const field = document.createElement("input");
+	field.className = "field";
+	field.type = "text";
+	field.value = value;
+	parent.appendChild(field);
+	return field;
+}
+
+function regulator_create(parent, rmin, rmax, rstep, orient)
+{
+	const digits = 2;
+	const layout = layout_create(parent, "h");
+	const decrement = button_create(layout, "<");
+	const text = text_create(layout, "");
+	const increment = button_create(layout, ">");
+	
+	layout.style.flexWrap = "nowrap";
+	layout.style.flex = "1";
+	layout.decrement = decrement;
+	layout.text = text;
+	layout.increment = increment;
+	layout.format = "numeric";
+	
+	/** custom event. */
+	decrement.on_press = function() {}
+	increment.on_press = function() {}
+	
+	layout.check_bounds = function()
+	{
+		if (layout.value > rmax)
+			layout.value = rmax;
+
+		if (layout.value < rmin)
+			layout.value = rmin;
+	}
+	
+	layout.set_value = function(val) {
+		layout.value = parseFloat(val);
+		layout.check_bounds();
+		if (layout.format == "percentage")
+			layout.text.innerHTML = (layout.value * 100).toFixed(digits) + "%";
+		else
+			layout.text.innerHTML = layout.value.toFixed(digits);
+	};
+	
+	layout.set_format = function(fmt) {
+		layout.format = fmt;
+		layout.set_value(layout.value);
+	}
+	
+	/** Set click event for this checkbox. */
+	decrement.onclick = function() {
+		layout.set_value(layout.value - rstep);
+		layout.ajax.send([layout.value.toFixed(digits)]);
+		decrement.on_press();
+	};
+	
+	text.onclick = function() {
+		const popup = popup_create(document.body, "Ввести значення");
+		const field = field_create(popup.content, layout.value.toFixed(digits));
+		field.type = "number";
+		field.min = rmin;
+		field.max = rmax;
+		field.step = rstep;
+	
+		const button = button_create(popup.content, "Встановити");
+		button.on_press = function() {
+			layout.set_value(field.value);
+			layout.ajax.send([layout.value.toFixed(digits)]);
+			popup.remove();
+		};
+		
+		field.onkeydown = function(evt) {
+			if (evt.key === "Enter")
+				button.on_press();
+		}
+	};
+	
+	increment.onclick = function() {
+		layout.set_value(layout.value + rstep);
+		layout.ajax.send([layout.value.toFixed(digits)]);
+		increment.on_press();
+	};
+	
+	increment.ontouchstart = increment.onmousedown = function() {
+		/** TODO AUTOINCREMENT. */
+		//console.log("touchstart");
+	};
+	
+	layout.ajax.interval = 5000;
+	layout.ajax.on_recv = function(args)
+	{
+		layout.set_value(args[0]);
+	}
+	
+	layout.set_value(rmin);
+	return layout;
+}
+
+function loading_create(parent)
+{
+	return generic_create(parent, "lds-dual-ring");
+}
+
+/************************************************
+ * REFACTORING
+ ***********************************************/
+const ID_BMS_INFO = 0;
+const ID_BMS_FILTERING = 1;
+const ID_BMS_FILTER_GENERAL_ERRORS_ENABLED = 2;
+const ID_BMS_FILTER_ISOLATION_ERRORS_ENABLED = 3;
+const ID_BMS_RECUPERATION_MULTIPLIER_ENABLED = 4;
+const ID_BMS_RECUPERATION_MULTIPLIER = 5;
+const ID_BMS_SOH_MULTIPLIER_ENABLED = 6;
+const ID_BMS_SOH_MULTIPLIER = 7;
+const ID_BMS_CUSTOM_CAPACITY_ENABLED = 8;
+const ID_BMS_CUSTOM_CAPACITY = 9;
+const ID_BMS_CUSTOM_UBERCHARGE_ENABLED = 10;
+const ID_BMS_CUSTOM_UBERCHARGE = 11;
+const ID_BMS_LIMIT_CHARGE_POWER_ENABLED = 12;
+const ID_BMS_LIMIT_CHARGE_POWER = 13;
+const ID_BMS_STOP_WIFI = 14;
+const ID_BMS_KWT_COUNTER_ENABLED = 15;
+const ID_BMS_KWT_COUNTER = 16;
+const ID_BMS_RELOAD = 17;
+
+var check_fs_corruption = true;
+
+/************************************************
+ * TESTS
+ ***********************************************/
+if(window.location.protocol == 'file:') {
+	setInterval(()=> {
+		bms_info.ajax.on_recv(["75", 350, "66", 1, 21, 10, 4.12, 4.18, 20, 11, 1]);
+		bms_emulators.kwt_counter.set_value(20);
+		
+		bms_filter_errors.generic.checkbox.ajax.on_recv([1]);
+		bms_filter_errors.isolation.checkbox.ajax.on_recv([1]);
+		bms_filter_errors.toolbar.checkbox.ajax.on_recv([1]);
+		
+		bms_regulators.recuperation_mul.toolbar.checkbox.ajax.on_recv([1]);
+		bms_regulators.recuperation_mul.content.regulator.ajax.on_recv([1.5]);
+		
+		bms_regulators.soh_mul.toolbar.checkbox.ajax.on_recv([1]);
+		bms_regulators.soh_mul.content.regulator.ajax.on_recv([1.4]);
+		
+		bms_regulators.new_capacity.toolbar.checkbox.ajax.on_recv([1]);
+		bms_regulators.new_capacity.content.regulator.ajax.on_recv([1.3]);
+		
+		bms_regulators.ubercharge.toolbar.checkbox.ajax.on_recv([1]);
+		bms_regulators.ubercharge.content.regulator.ajax.on_recv([4.18]);
+
+		bms_regulators.max_charge_power.toolbar.checkbox.ajax.on_recv([1]);
+		bms_regulators.max_charge_power.content.regulator.ajax.on_recv([10]);
+	} ,3000);
+}
+
+/************************************************
+ * BMS_INFO
+ ***********************************************/
+var bms_info = pane_create(document.body, "Статус батареї");
+
+l0 = layout_create(bms_info.content, "v");
+l0.style.flex = "1";
+l0.style.alignItems = "end";
+l1 = layout_create(bms_info.content, "v");
+l1.style.alignItems = "end";
+l1.style.flex = "1";
+
+bms_info.soh = text_create(l0);
+bms_info.voltage = text_create(l0);
+bms_info.current = text_create(l0);
+bms_info.temp = text_create(l0);
+bms_info.recu = text_create(l0);
+bms_info.max_current = text_create(l1);
+bms_info.min_cell = text_create(l1);
+bms_info.max_cell = text_create(l1);
+bms_info.capacity = text_create(l1);
+bms_info.max_capacity = text_create(l1);
+bms_info.soc = text_create(bms_info);
+bms_info.soc.style.fontSize = "1.5em";
+
+bms_info.ajax.id = 0;
+bms_info.ajax.interval = 2500;
+bms_info.ajax.on_recv = function(args)
+{
+	bms_info.soh.innerHTML = "Значення SOH: " + args[0] + "%";
+	bms_info.voltage.innerHTML = "Напруга: " + args[1] + "V";
+	bms_info.soc.innerHTML = "Заряд: " + args[2] + "%";
+	bms_info.current.innerHTML = "Cтрум: " + args[3] + "A";
+	bms_info.temp.innerHTML = "Температура: " + args[4] + "C";
+	bms_info.max_current.innerHTML = "Макс. вхід: " + args[5] + "kWt";
+	bms_info.min_cell.innerHTML = "Мін. ячей: " + args[6] + "V";
+	bms_info.max_cell.innerHTML = "Макс: " + args[7] + "V (d=" + parseFloat(args[7] - args[6]).toFixed(3) + ")";
+	
+	const kwh = parseFloat(args[8]).toFixed(1) + "kWh (" + parseFloat(args[8] * 1000 / 96 / 3.6).toFixed(1);
+	/** May divide by zero. */
+	const kwh_max_mul = args[8] * (100 / args[2]);
+	const kwh_max = kwh_max_mul.toFixed(1) + "kWh (" + parseFloat(kwh_max_mul * 1000 / 96 / 3.6).toFixed(1);
+	bms_info.capacity.innerHTML = "Ємність: " + kwh + "aH)";
+	bms_info.max_capacity.innerHTML = "Макс: " + kwh_max + "aH)";
+	bms_emulators.kwt_counter.set_value(kwh);
+	bms_info.recu.innerHTML = "Рекуперація: " + args[9] + "kWt";
+	
+	if (check_fs_corruption && args[10]) {
+		const fs_corrupted = popup_create(document.body, "Файлова система несправна");
+		const ok = button_create(fs_corrupted.content, "Зрозуміло");
+		ok.on_press = function() { fs_corrupted.remove(); }
+		check_fs_corruption = false;
+	}
+	
+	popup.remove();
+};
+
+/************************************************
+ * FILTER ERRORS
+ ***********************************************/
+const bms_filter_errors = pane_create(document.body, "Фільтрація");
+bms_filter_errors.content.style.visibility = "hidden";
+
+bms_filter_errors.toolbar.checkbox = checkbox_create(bms_filter_errors.toolbar, false);
+bms_filter_errors.toolbar.checkbox.style.padding = "0.2em";
+bms_filter_errors.toolbar.checkbox.ajax.id = 1;
+bms_filter_errors.toolbar.checkbox.on_check = function(state)
+{
+	if (state) {
+		bms_filter_errors.generic.checkbox.ajax.id = 2;
+		bms_filter_errors.isolation.checkbox.ajax.id = 3;
+		bms_filter_errors.content.style.visibility = "";
+	} else {
+		bms_filter_errors.generic.checkbox.ajax.id = undefined;
+		bms_filter_errors.isolation.checkbox.ajax.id = undefined;
+		bms_filter_errors.content.style.visibility = "hidden";
+	}
+}
+
+bms_filter_errors.generic = subpane_create(bms_filter_errors.content, "Фільтрувати загальні помилки");
+bms_filter_errors.generic.checkbox = checkbox_create(bms_filter_errors.generic.content, false);
+
+bms_filter_errors.isolation = subpane_create(bms_filter_errors.content, "Фільтрувати помилку по ізоляції");
+bms_filter_errors.isolation.checkbox = checkbox_create(bms_filter_errors.isolation.content, false);
+
+
+/************************************************
+ * REGULATORS
+ ***********************************************/
+const bms_regulators = pane_create(document.body, "Регулювання");
+//bms_regulators.content.style.visibility = "hidden";
+
+function create_bms_regulator(parent, rmin, rmax, rstep,
+			      enabler_id, regulator_value_id, caption)
+{
+	const subpane = subpane_create(parent, caption);
+	subpane.content.style.flexBasis = "33.333333%";
+	subpane.content.style.visibility = "hidden";
+	subpane.toolbar.checkbox = checkbox_create(subpane.toolbar, false);
+	subpane.toolbar.checkbox.style.padding = "0.1em";
+	subpane.toolbar.checkbox.ajax.id = enabler_id;
+	subpane.toolbar.checkbox.on_check = function(state)
+	{
+		if (state) {
+			subpane.content.regulator.ajax.id = regulator_value_id;
+			subpane.content.style.visibility = "";
+		} else {
+			subpane.content.regulator.ajax.id = undefined;
+			subpane.content.style.visibility = "hidden";
+		}
+	}
+	
+	subpane.content.regulator = regulator_create(subpane.content, rmin, rmax, rstep);
+	
+	return subpane;
+}
+
+/************************************************
+ * RECUPERATION MUL REGULATOR
+ ***********************************************/
+bms_regulators.recuperation_mul = create_bms_regulator(
+	bms_regulators.content, 0.0, 2.0, 0.1, 4, 5, "Множник рекуперації");
+bms_regulators.recuperation_mul.content.regulator.set_format("percentage");
+
+/************************************************
+ * SOH MUL REGULATOR
+ ***********************************************/
+bms_regulators.soh_mul = create_bms_regulator(
+	bms_regulators.content, 0.0, 2.0, 0.1, 6, 7, "Множник SOH");
+bms_regulators.soh_mul.content.regulator.set_format("percentage");
+ 
+ /************************************************
+ * BATTERY NEW CAPACITY REGULATOR
+ ***********************************************/
+bms_regulators.new_capacity = create_bms_regulator(
+	bms_regulators.content, 0.0, 100.0, 1, 8, 9, "Ємність аккумулятора(kWt)");
+
+ /************************************************
+ * UBERCHARGE VOLTAGE REGULATOR
+ ***********************************************/
+bms_regulators.ubercharge = create_bms_regulator(
+	bms_regulators.content, 3.2, 4.20, 0.01, 10, 11, "Дозаряд по макс. ячейці(V)");
+
+ /************************************************
+ * MAX INPUT POWER REGULATOR
+ ***********************************************/
+bms_regulators.max_charge_power = create_bms_regulator(
+	bms_regulators.content, 0, 20, 0.33, 12, 13, "Обмеження потужності заряду(kWt)");
+
+
+/************************************************
+ * EMULATORS
+ ***********************************************/
+function create_kwt_counter(parent)
+{
+	const pane = subpane_create(parent.content, "Лічильник заряду");
+	
+	/** Enabler. */
+	const enabled = checkbox_create(pane.toolbar, true);
+	enabled.ajax.id = ID_BMS_KWT_COUNTER_ENABLED;
+	enabled.style.padding = "0.1em";
+	enabled.on_check = function(state) {
+		pane.content.style.visibility = state ? "" : "hidden";
+	}
+	
+	/** Set current capacity. */
+	const subpane = subpane_create(pane.content, "Встановити поточну ємність(kWh)");
+	const confirm_button = button_create(subpane.toolbar, "Підтвердити");
+	confirm_button.style.padding = "0.1em";
+	confirm_button.on_press = function() {
+		//text.innerHTML = regulator.value.toFixed(2);
+		text.ajax.send([regulator.value]);
+	}
+	
+	/** Create regulator. */
+	const regulator = regulator_create(subpane.content, 0, 100, 1, 109, 110);	
+
+	/** Print current capacity. */
+	const layout = layout_create(pane.content, "h");
+	text_create(layout, "Поточна ємність аккумулятора(kWh):");
+	const text = text_create(layout, "0.00");
+	text.ajax.id = ID_BMS_KWT_COUNTER;
+	
+	pane.set_value = function(val) {
+		val = parseFloat(val);
+		text.innerHTML = val.toFixed(2);
+		//regulator.set_value(val);
+	}
+	
+	return pane;
+}
+
+function create_emulators_pane()
+{
+	const pane = pane_create(document.body, "Емуляція");
+	pane.kwt_counter = create_kwt_counter(pane);
+
+	return pane;
+}
+
+const bms_emulators = create_emulators_pane();
+
+/************************************************
+ * ADDITIONAL
+ ***********************************************/
+const bms_additional = pane_create(document.body, "Додатково");
+
+/************************************************
+ * DISABLE WIFI
+ ***********************************************/
+const disable_wifi = subpane_create(bms_additional.content, "Вимкнути Wi-Fi");
+disable_wifi.button = button_create(disable_wifi.content, "?");
+disable_wifi.button.on_press = function()
+{
+	const popup = popup_create(document.body, "Бажаєте вимкнути Wi-Fi?");
+	popup.content.style.flexWrap = "nowrap";
+	popup.content.style.justifyContent = "center";
+	popup.content.style.padding = "1em";
+	
+	const yes = button_create(popup.content, "Так");
+	yes.ajax.id = 14;
+	yes.on_press = function() { popup.remove(); }
+	
+	const no = button_create(popup.content, "Ні");
+	no.on_press = function() { popup.remove(); }
+}
+
+/************************************************
+ * RESET ESP
+ ***********************************************/
+const reload_canbox = subpane_create(bms_additional.content, "Перезавантажити CanBox");
+reload_canbox.button = button_create(reload_canbox.content, "?");
+reload_canbox.button.on_press = function()
+{
+	const popup = popup_create(document.body, "Бажаєте перезавантажити CanBox?");
+	popup.content.style.flexWrap = "nowrap";
+	popup.content.style.justifyContent = "center";
+	popup.content.style.padding = "1em";
+	
+	const yes = button_create(popup.content, "Так");
+	yes.ajax.id = ID_BMS_RELOAD;
+	yes.on_press = function() { popup.remove(); }
+	
+	const no = button_create(popup.content, "Ні");
+	no.on_press = function() { popup.remove(); }
+}
+
+/************************************************
+ * DROP SETTINGS
+ ***********************************************/
+/*const drop_settings = subpane_create(bms_additional.content, "Скинути налаштування");
+drop_settings.button = button_create(drop_settings.content, "?");
+drop_settings.button.on_press = function()
+{
+	const popup = popup_create(document.body, "Бажаєте скинути налаштування?");
+	popup.content.style.flexWrap = "nowrap";
+	popup.content.style.justifyContent = "center";
+	popup.content.style.padding = "1em";
+	
+	const yes = button_create(popup.content, "Так");
+	yes.ajax.id = 15;
+	yes.on_press = function() { popup.remove(); }
+	
+	const no = button_create(popup.content, "Ні");
+	no.on_press = function() { popup.remove(); }
+
+}*/
+
+/************************************************
+ * UPDATE FIRMWARE
+ ***********************************************/
+var update_firmware = subpane_create(bms_additional.content, "Оновленя прошивки");
+update_firmware.content.style.flexDirection = "column";
+update_firmware.style.flex = "100%";
+update_firmware.content.innerHTML = '\
+	<iframe name= "hidden-iframe" style= "display: none;"></iframe>\
+	<form method= "post" enctype= "multipart/form-data" target = "hidden-iframe" action = "update" style= "display:contents">\
+		native_v4<input type= "file" class = "layout" id= "file" name= "file">\
+		<button class = "button">Підтвердити</button>\
+	</form>'
+
+
+/************************************************
+ * INIT
+ ***********************************************/
+popup = popup_create(document.body, "Завантаження");
+loading_create(popup.content);
+popup.content.style.justifyContent = "center";
+popup.content.style.padding = "1em";
+
+</script>
+</body>
+</html>
