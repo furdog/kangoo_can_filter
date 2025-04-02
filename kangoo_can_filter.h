@@ -79,50 +79,25 @@ enum button_event button_update(struct button *self, clock_t delta_time_ms)
 /******************************************************************************
  * MONITORED VARIABLES ABSTRACTION
  *****************************************************************************/
-/* Monitored variables. */
-#define MON_VAR_DATA_SIZE_YET_UNDEFINED 1
+struct mon_var_header {
+	const char *name;
 
-enum mon_var_type {
-	MON_VAR_TYPE_UNDEFINED,
-
-	MON_VAR_TYPE_INT,
-	MON_VAR_TYPE_FLOAT,
-	MON_VAR_TYPE_STRING
-};
-
-const uint8_t mon_var_type_size[] = {
-	0,
-	sizeof(int),
-	sizeof(float),
-	-1
-};
-
-struct mon_var {
 	bool    _changed;
 	uint8_t _len;
-
-	const char       *name;
-	enum mon_var_type type;
-	uint8_t           flags;   /* User specified flags. */
-
-	uint8_t data[MON_VAR_DATA_SIZE_YET_UNDEFINED];
 };
 
-void mon_var_init(struct mon_var *self)
+void mon_var_change(void *self)
 {
-	self->_changed = false;
-	self->_len     = 0;
+	struct mon_var_header *hdr = self;
 	
-	self->name  = NULL;
-	self->type  = MON_VAR_TYPE_UNDEFINED;
-	self->flags = 0;
+	hdr->_changed = true;
 }
 
 /* Simple storage for monitored variables. */
 struct mon_var_storage {
 	uint8_t _state; /* FSM state */
 
-	struct mon_var *_it; /* Iterator */
+	struct mon_var_header *_it; /* Iterator */
 	
 	uint8_t *_buffer;
 	size_t   _capacity; /* Total buffer capacity */
@@ -141,53 +116,51 @@ void mon_var_storage_init(struct mon_var_storage *self,
 	self->_size     = 0;
 }
 
-struct mon_var *mon_var_storage_alloc(struct mon_var_storage *self,
-				      uint8_t data_size)
+void *mon_var_storage_alloc(struct mon_var_storage *self, int8_t size)
 {
-	struct mon_var *var;
+	struct mon_var_header *hdr;
 
-	size_t total_data_size = sizeof(struct mon_var) - 1 + data_size;
+	assert(self->_size + size <= self->_capacity);
 
-	assert(self->_size + total_data_size <= self->_capacity);
+	/* Get header address */
+	hdr = (struct mon_var_header *)(self->_buffer + self->_size);
 
-	/* Get variable address */
-	var = (struct mon_var *)(self->_buffer + self->_size);
-
-	/* Initialize variable */
-	mon_var_init(var);
+	/* Initialize header */
+	hdr->name     = NULL;
+	hdr->_changed = false;
+	hdr->_len     = size;
 
 	/* Update storage size */
-	self->_size += total_data_size;
+	self->_size += size;
 
-	return var;
+	/* Return header address */
+	return hdr;
 }
 
-/* Iterates storage and returns pointer to mon_var if it was changed. */
-struct mon_var *mon_var_storage_update(struct mon_var_storage *self)
+/* Iterates storage and returns pointer to mon_var_header if it was changed. */
+void *mon_var_storage_update(struct mon_var_storage *self)
 {
-	struct mon_var *changed_var = NULL;
-	
+	struct mon_var_header *changed_var = NULL;
+
 	switch (self->_state) {
 	default: case 0: /* INITIAL */
 		if (self->_size == 0)
 			break;
 
-		self->_it = (struct mon_var *)self->_buffer;
+		self->_it = (struct mon_var_header *)self->_buffer;
 		self->_state = 1;
 
 		break;
-		
+	
 	case 1:
 		/* Go to the next mon_var element */
-		self->_it = (struct mon_var *)(
-			(uint8_t *)self->_it + sizeof(struct mon_var) - 1 +
-								self->_it->_len
-		);
-	
+		self->_it = (struct mon_var_header *)(
+			(uint8_t *)self->_it + self->_it->_len);
+
 		/* If element is invalid (lies beyond allocated space) */
-		if ((uint8_t *)self->_it > (self->_buffer + self->_capacity)) {
+		if ((uint8_t *)self->_it >= (self->_buffer + self->_size)) {
 			/* Set element as first */
-			self->_it = (struct mon_var *)self->_buffer;
+			self->_it = (struct mon_var_header *)self->_buffer;
 		}
 
 		if (self->_it->_changed) {
@@ -197,6 +170,6 @@ struct mon_var *mon_var_storage_update(struct mon_var_storage *self)
 
 		break;
 	}
-	
+
 	return changed_var;
 }
