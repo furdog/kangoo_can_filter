@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include "kangoo_can_filter.h"
 
-uint8_t buf[512];
-struct mon_var_storage st;
-
 /* User specified mon_var metadata */
 struct mon_var_meta
 {
@@ -34,12 +31,22 @@ struct mon_var_data_generic
 	void                 *value;
 };
 
+typedef alignas(sizeof(struct mon_var_header)) uint8_t test_t;
+test_t buf[512];
+struct mon_var_storage st;
+
 int main()
 {
 	int i;
 
 	struct mon_var_data_int    *ivar;
 	struct mon_var_data_string *svar;
+
+
+	/* MISRA TEST */
+	struct mon_var_data_string *v1 = NULL;
+	struct mon_var_data_int    *v2 = (struct mon_var_data_int *)v1;
+
 
 	mon_var_storage_init(&st, buf, 512);
 
