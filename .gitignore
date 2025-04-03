@@ -4,3 +4,5 @@ libraries
 *.exe
 *.tmp
 *.log
+*.dump
+*.ctu-info

@@ -2,6 +2,7 @@
  * HEADERS
  *****************************************************************************/
 #include <stdbool.h>
+#include <stdalign.h>
 #include <stdint.h>
 #include <assert.h>
 #include <time.h>
@@ -37,7 +38,7 @@ void button_init(struct button *self)
 
 bool button_is_long_pressed(struct button *self)
 {
-	return (self->_state == 1);
+	return self->_state == (uint8_t)1;
 }
 
 enum button_event button_update(struct button *self, clock_t delta_time_ms)
@@ -47,7 +48,7 @@ enum button_event button_update(struct button *self, clock_t delta_time_ms)
 		if (self->pressed)
 			self->_timer_ms += delta_time_ms;
 		
-		if (self->_timer_ms >= BUTTON_LONG_PRESS_TIME_MS) {
+		if (self->_timer_ms >= (uint16_t)BUTTON_LONG_PRESS_TIME_MS) {
 			self->_state = 1;
 			return BUTTON_EVENT_LONG_PRESS;
 		}
@@ -56,7 +57,7 @@ enum button_event button_update(struct button *self, clock_t delta_time_ms)
 		if (self->pressed)
 			break;
 
-		if (self->_timer_ms >= BUTTON_SHORT_PRESS_TIME_MS) {
+		if (self->_timer_ms >= (uint16_t)BUTTON_SHORT_PRESS_TIME_MS) {
 			self->_state = 1;
 			return BUTTON_EVENT_SHORT_PRESS;
 		}
@@ -116,9 +117,13 @@ void mon_var_storage_init(struct mon_var_storage *self,
 	self->_size     = 0;
 }
 
-void *mon_var_storage_alloc(struct mon_var_storage *self, int8_t size)
+void *mon_var_storage_alloc(struct mon_var_storage *self, uint8_t size)
 {
 	struct mon_var_header *hdr;
+
+	uint8_t align = alignof(struct mon_var_header);
+	uint8_t aligned_size = (size + (align - (uint8_t)1)) & 
+			     (uint8_t)~(align - (uint8_t)1);
 
 	assert(self->_size + size <= self->_capacity);
 
@@ -144,7 +149,7 @@ void *mon_var_storage_update(struct mon_var_storage *self)
 
 	switch (self->_state) {
 	default: case 0: /* INITIAL */
-		if (self->_size == 0)
+		if (self->_size == (size_t)0)
 			break;
 
 		self->_it = (struct mon_var_header *)self->_buffer;
