@@ -418,12 +418,13 @@ void loop()
 	#endif
 
 	#ifdef USE_NATIVE_CAN
-	if (can2.recoverFromBusOff()) {
+	// TODO FIXME (not working in new version)
+	/* if (can2.recoverFromBusOff()) {
 		TWAI_MODE_REG = ACAN_ESP32_Settings::NormalMode | TWAI_RESET_MODE;
 		do {
 			TWAI_MODE_REG = ACAN_ESP32_Settings::NormalMode;
 		} while ((TWAI_MODE_REG & TWAI_RESET_MODE) != 0);
-	}
+	} */
 	#endif
 
 	if (can1.receive(frame)) {
