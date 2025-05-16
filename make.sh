@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SERIAL_PORT=COM5
+SERIAL_PORT=COM3
 MONITOR_BAUD=115200
 
 #Which hardware to use

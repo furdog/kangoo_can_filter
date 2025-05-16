@@ -26,6 +26,10 @@ if [[ ! -d "libraries/" ]]; then
 	unzip ar.zip
 	rm ar.zip
 
+	curl -L https://github.com/adafruit/Adafruit_MCP2515/archive/refs/tags/0.2.1.zip > ar.zip
+	unzip ar.zip
+	rm ar.zip
+
 	# DEPRECATED! USE ADAFRUIT CAN INSTEAD!!!
 	curl -L https://github.com/pierremolinaro/acan2515/archive/refs/tags/2.1.5.zip > ar.zip
 	unzip ar.zip
