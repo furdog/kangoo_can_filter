@@ -1,5 +1,4 @@
-#include <ACAN_ESP32.h>
-#include <ACAN2515.h>
+#include "native_board_driver.h"
 
 #define WEB_INTERFACE_ENABLED
 #define USE_NATIVE_CAN
@@ -27,46 +26,6 @@
 #define LED2_PIN 15
 bool led_state = false;
 bool led2_state = false;
-
-#ifdef USE_NATIVE_CAN
-#define CAN1_SCK   18
-#define CAN1_MOSI  23
-#define CAN1_MISO  19
-#define CAN1_CS    17 
-#define CAN1_INT   -1
-#define CAN1_RESET -1
-#define CAN1_DESIRED_BIT_RATE 1000UL * 500UL // 500 Kb/s
-#define CAN1_QUARTZ_FREQUENCY 16UL * 1000UL * 1000UL // 8 MHz
-ACAN2515 can1 (CAN1_CS, SPI, CAN1_INT);
-
-/** When native can used, it replaces can2. */
-#define CAN2_NATIVE_RX GPIO_NUM_16
-#define CAN2_NATIVE_TX GPIO_NUM_4
-#define CAN2_NATIVE_DESIRED_BIT_RATE 1000UL * 500UL // 500 Kb/s
-#define  can2 ACAN_ESP32::can
-#endif
-
-#ifdef USE_DUAL_MCP
-#define CAN1_SCK   18
-#define CAN1_MOSI  23
-#define CAN1_MISO  19
-#define CAN1_CS     5 
-#define CAN1_INT   -1
-#define CAN1_RESET -1
-#define CAN1_DESIRED_BIT_RATE 1000UL * 500UL // 500 Kb/s
-#define CAN1_QUARTZ_FREQUENCY 16UL * 1000UL * 1000UL // 8 MHz
-ACAN2515 can1 (CAN1_CS, SPI, CAN1_INT);
-
-#define CAN2_SCK   18
-#define CAN2_MOSI  23
-#define CAN2_MISO  19
-#define CAN2_CS     17 
-#define CAN2_INT   -1
-#define CAN2_RESET -1
-#define CAN2_DESIRED_BIT_RATE 1000UL * 500UL // 500 Kb/s
-#define CAN2_QUARTZ_FREQUENCY 16UL * 1000UL * 1000UL // 8 MHz
-ACAN2515 can2 (CAN2_CS, SPI, CAN2_INT);
-#endif
 
 static bool  bms_filtering_enabled                   = BMS_FILTERING_ENABLED;
 static bool  bms_filter_general_errors_enabled       = BMS_FILTER_GENERAL_ERRORS_ENABLED;
@@ -195,7 +154,7 @@ bool ubercharge()
 }
 #endif
 
-void can_filter(CANMessage *frame)
+void can_filter(struct kangoo_can_filter_frame *frame)
 {	
 	switch (frame->id) {
 	case 0x155:
@@ -350,8 +309,6 @@ void web_interface_task(void *pv_parameters)
 
 void setup()
 {
-	uint16_t error_code;
-
 	pinMode(13, INPUT_PULLUP); //disable wifi on boot
 	pinMode(RECUPERATION_BUTTON_MINUS, INPUT_PULLUP);
 	pinMode(RECUPERATION_BUTTON_PLUS, INPUT_PULLUP);
@@ -361,40 +318,8 @@ void setup()
 	Serial.begin(115200);
 	delay(100);
 
-	/** ESP32 MCP2515 Shield CAN. */
-	SPI.begin(CAN1_SCK, CAN1_MISO, CAN1_MOSI);
-	ACAN2515Settings settings1(CAN1_QUARTZ_FREQUENCY, CAN1_DESIRED_BIT_RATE);
-	error_code = can1.begin(settings1, NULL);
-
-	if (!error_code) {
-		Serial.println ("CAN1 OK") ;
-	} else {
-		Serial.print ("ERROR CAN1: 0x") ;
-		Serial.println (error_code, HEX) ;
-	}
-	#ifdef USE_DUAL_MCP
-	/** ESP32 MCP2515 Shield CAN. */
-	SPI.begin(CAN2_SCK, CAN2_MISO, CAN2_MOSI);
-	ACAN2515Settings settings2(CAN2_QUARTZ_FREQUENCY, CAN2_DESIRED_BIT_RATE);
-	error_code = can2.begin(settings2, NULL);
-	#endif
-
-	#ifdef USE_NATIVE_CAN
-	/** ESP32 Native CAN. */
-	ACAN_ESP32_Settings settings(CAN2_NATIVE_DESIRED_BIT_RATE);
-	settings.mRequestedCANMode = ACAN_ESP32_Settings::NormalMode;
-	settings.mRxPin = CAN2_NATIVE_RX; // Optional, default Tx pin is GPIO_NUM_4
-	settings.mTxPin = CAN2_NATIVE_TX; // Optional, default Rx pin is GPIO_NUM_5
-	error_code = can2.begin(settings);
-	#endif
+	kangoo_can_filter_dri_init();
 	
-	if (!error_code) {
-		Serial.println ("CAN2 OK") ;
-	} else {
-		Serial.print ("ERROR CAN2: 0x") ;
-		Serial.println (error_code, HEX) ;
-	}
-
 	//filesystem_init();
 
 	#ifdef WEB_INTERFACE_ENABLED
@@ -409,35 +334,26 @@ void setup()
 
 void loop()
 {
-	CANMessage frame;
-	
-	can1.poll();
+	struct kangoo_can_filter_frame frame = {0};
 
-	#ifdef USE_DUAL_MCP
-	can2.poll();
-	#endif
+	//Update driver
+	kangoo_can_filter_dri_update();
 
-	#ifdef USE_NATIVE_CAN
-	// TODO FIXME (not working in new version)
-	/* if (can2.recoverFromBusOff()) {
-		TWAI_MODE_REG = ACAN_ESP32_Settings::NormalMode | TWAI_RESET_MODE;
-		do {
-			TWAI_MODE_REG = ACAN_ESP32_Settings::NormalMode;
-		} while ((TWAI_MODE_REG & TWAI_RESET_MODE) != 0);
-	} */
-	#endif
-
-	if (can1.receive(frame)) {
+	kangoo_can_filter_recv_frame(0, &frame);
+	if (frame.len > -1)
+	{
 		can_filter(&frame);
-		can2.tryToSend(frame);
-		
+		kangoo_can_filter_send_frame(1, &frame);
+
 		digitalWrite(LED_PIN, led_state);
 		led_state = !led_state;
 	}
 
-	if (can2.receive(frame)) {
+	kangoo_can_filter_recv_frame(1, &frame);
+	if (frame.len > -1)
+	{
 		can_filter(&frame);
-		can1.tryToSend(frame);
+		kangoo_can_filter_send_frame(0, &frame);
 		
 		digitalWrite(LED2_PIN, led2_state);
 		led2_state = !led2_state;
@@ -459,17 +375,9 @@ void loop()
 		led_state = !led_state;
 		digitalWrite(LED2_PIN, led2_state);
 		led2_state = !led2_state;
-
-		#ifdef USE_NATIVE_CAN
-		/*Serial.print (" STATUS 0x");
-		Serial.print (TWAI_STATUS_REG, HEX);
-		Serial.print (" RXERR ");
-		Serial.print (TWAI_RX_ERR_CNT_REG);
-		Serial.print (" TXERR ");
-		Serial.println (TWAI_TX_ERR_CNT_REG);
-		Serial.print (" ACAN_ESP32::statusFlags() ");
-		Serial.println (can2.statusFlags());*/
-		#endif
+		
+		//Print twai status to monitor errors (uncomment)
+		kangoo_can_filter_esp32_twai_print_status();
 	}
 	
 	bms_process_recuperation_buttons();
