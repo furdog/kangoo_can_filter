@@ -122,6 +122,12 @@ void kangoo_can_filter_init_esp32_twai()
 	twai_reconfigure_alerts_v2(twai_bus_0, TWAI_ALERT_BUS_OFF, NULL);
 }
 
+/* Call only in bus off state */
+void kangoo_can_filter_kill_esp32_twai()
+{
+	twai_driver_uninstall_v2(twai_bus_0);
+}
+
 /* TWAI TEST */
 void kangoo_can_filter_esp32_twai_print_status()
 {
@@ -257,15 +263,27 @@ void kangoo_can_filter_dri_update()
 	if (alerts & TWAI_ALERT_BUS_OFF) {
 		twai_bus_0_recovery = true;
 		printf("TWAI_ALERT_BUS_OFF\n");
-		twai_reconfigure_alerts_v2(twai_bus_0, TWAI_ALERT_BUS_RECOVERED, NULL);
-		twai_initiate_recovery_v2(twai_bus_0);    //Needs 128 occurrences of bus free signal
+
+		//Commented out due to driver BUG
+		//twai_clear_transmit_queue_v2(twai_bus_0);
+		//twai_reconfigure_alerts_v2(twai_bus_0, TWAI_ALERT_BUS_RECOVERED, NULL);
+		//twai_initiate_recovery_v2(twai_bus_0);    //Needs 128 occurrences of bus free signal
+
+		//Workaround
+		twai_reconfigure_alerts_v2(twai_bus_0, 0, NULL);
+		kangoo_can_filter_kill_esp32_twai();
+		kangoo_can_filter_init_esp32_twai();
+		twai_bus_0_recovery = false;
 	}
 	
+	//Commented out due to driver BUG
+	/*
 	if (alerts & TWAI_ALERT_BUS_RECOVERED) {
 		twai_bus_0_recovery = false;
 		printf("TWAI_ALERT_BUS_RECOVERED\n");
 		twai_reconfigure_alerts_v2(twai_bus_0, TWAI_ALERT_BUS_OFF, NULL);
 	}
+	*/
 }
 
 void kangoo_can_filter_send_frame(uint8_t bus_id,
