@@ -1,7 +1,8 @@
-#include "native_board_driver.h"
+//#include "native_board_driver.h"
+#include "esp32c6_board_driver.h"
 
-#define WEB_INTERFACE_ENABLED
-#define USE_NATIVE_CAN
+//#define WEB_INTERFACE_ENABLED
+//#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
 
 //Початкові налаштування системи (Не працюють коли веб інтерфейс увімкнений)
@@ -309,14 +310,14 @@ void web_interface_task(void *pv_parameters)
 
 void setup()
 {
-	pinMode(13, INPUT_PULLUP); //disable wifi on boot
-	pinMode(RECUPERATION_BUTTON_MINUS, INPUT_PULLUP);
-	pinMode(RECUPERATION_BUTTON_PLUS, INPUT_PULLUP);
-	pinMode(LED2_PIN, OUTPUT);
-	pinMode(LED_PIN, OUTPUT);
-	pinMode(LED2_PIN, OUTPUT);
+	//pinMode(13, INPUT_PULLUP); //disable wifi on boot
+	//pinMode(RECUPERATION_BUTTON_MINUS, INPUT_PULLUP);
+	//pinMode(RECUPERATION_BUTTON_PLUS, INPUT_PULLUP);
+	//pinMode(LED2_PIN, OUTPUT);
+	//pinMode(LED_PIN, OUTPUT);
+	//pinMode(LED2_PIN, OUTPUT);
 	Serial.begin(115200);
-	delay(100);
+	delay(10000);
 
 	kangoo_can_filter_dri_init();
 	
@@ -345,7 +346,7 @@ void loop()
 		can_filter(&frame);
 		kangoo_can_filter_send_frame(1, &frame);
 
-		digitalWrite(LED_PIN, led_state);
+		//digitalWrite(LED_PIN, led_state);
 		led_state = !led_state;
 	}
 
@@ -355,30 +356,30 @@ void loop()
 		can_filter(&frame);
 		kangoo_can_filter_send_frame(0, &frame);
 		
-		digitalWrite(LED2_PIN, led2_state);
+		//digitalWrite(LED2_PIN, led2_state);
 		led2_state = !led2_state;
 	}
 
 	static unsigned long timestamp;
 	if (millis() - timestamp >= 5000) {
 		static bool wifi_on = true;
-		if (wifi_on && !digitalRead(13)) {
-			WiFi.disconnect(true);
-			WiFi.mode(WIFI_OFF);
-			wifi_on = false;
-		}
+		//if (wifi_on && !digitalRead(13)) {
+		//	WiFi.disconnect(true);
+		//	WiFi.mode(WIFI_OFF);
+		//	wifi_on = false;
+		//}
 		
 		//filesystem_update();
 		timestamp += 5000;
 
-		digitalWrite(LED_PIN, led_state);
-		led_state = !led_state;
-		digitalWrite(LED2_PIN, led2_state);
-		led2_state = !led2_state;
+		//digitalWrite(LED_PIN, led_state);
+		//led_state = !led_state;
+		//digitalWrite(LED2_PIN, led2_state);
+		//led2_state = !led2_state;
 		
 		//Print twai status to monitor errors (uncomment)
 		kangoo_can_filter_esp32_twai_print_status();
 	}
 	
-	bms_process_recuperation_buttons();
+	//bms_process_recuperation_buttons();
 }
