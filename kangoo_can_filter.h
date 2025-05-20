@@ -9,13 +9,11 @@
 /******************************************************************************
  * PHYSICAL BUTTON ABSTRACTION
  *****************************************************************************/
-#define BUTTON_SHORT_PRESS_TIME_MS 50
-#define BUTTON_LONG_PRESS_TIME_MS  2000
+#define BUTTON_PRESS_TIME_MS 50
 
 enum button_event {
 	BUTTON_EVENT_NONE,
-	BUTTON_EVENT_SHORT_PRESS,
-	BUTTON_EVENT_LONG_PRESS,
+	BUTTON_EVENT_HOLD,
 	BUTTON_EVENT_RELEASE
 };
 
@@ -35,11 +33,6 @@ void button_init(struct button *self)
 	self->pressed  = false;
 }
 
-bool button_is_long_pressed(struct button *self)
-{
-	return self->_state == (uint8_t)1;
-}
-
 enum button_event button_update(struct button *self, uint32_t delta_time_ms)
 {
 	enum button_event ev = BUTTON_EVENT_NONE;
@@ -49,29 +42,18 @@ enum button_event button_update(struct button *self, uint32_t delta_time_ms)
 	case 0:
 		if (self->pressed) {
 			self->_timer_ms += delta_time_ms;
+		} else {
+			self->_timer_ms = 0;
 		}
 		
-		if (self->_timer_ms >= (uint16_t)BUTTON_LONG_PRESS_TIME_MS) {
+		if (self->_timer_ms >= (uint16_t)BUTTON_PRESS_TIME_MS) {
 			self->_state = 1;
-			ev = BUTTON_EVENT_LONG_PRESS;
+			ev = BUTTON_EVENT_HOLD;
 			break;
 		}
-
-		/* Do not exec code below if button is being held */
-		if (self->pressed) {
-			break;
-		}
-
-		if (self->_timer_ms >= (uint16_t)BUTTON_SHORT_PRESS_TIME_MS) {
-			self->_state = 1;
-			ev = BUTTON_EVENT_SHORT_PRESS;
-			break;
-		}
-		
-		self->_timer_ms = 0;
 		
 		break;
-	case 1: /* Wait for release */
+	case 1:	/* Wait for release */
 		if (self->pressed) {
 			break;
 		}
@@ -82,5 +64,5 @@ enum button_event button_update(struct button *self, uint32_t delta_time_ms)
 		break;
 	}
 	
-	return BUTTON_EVENT_NONE;
+	return ev;
 }

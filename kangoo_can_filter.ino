@@ -1,7 +1,7 @@
 //#include "native_board_driver.h"
 #include "esp32c6_board_driver.h"
 
-//#define WEB_INTERFACE_ENABLED
+#define WEB_INTERFACE_ENABLED
 //#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
 
