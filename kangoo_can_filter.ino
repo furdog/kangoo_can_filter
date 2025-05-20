@@ -1,7 +1,8 @@
 //#include "native_board_driver.h"
+#include "kangoo_can_filter.h"
 #include "esp32c6_board_driver.h"
 
-#define WEB_INTERFACE_ENABLED
+//#define WEB_INTERFACE_ENABLED
 //#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
 
@@ -64,17 +65,18 @@ static uint8_t diag_counter = 0;
 static bool    bms_charger_plugged_in = 0.0f;
 static bool    bms_ubercharge_active = false;
 
-#include "button.h"
 #include "filesystem.h"
 #include "web_interface.h"
 
 struct button bms_recuperation_button_minus;
 struct button bms_recuperation_button_plus;
-void bms_process_recuperation_buttons()
+void bms_process_recuperation_buttons(clock_t delta_time_ms)
 {
-	if (button_update(&bms_recuperation_button_minus, millis(),
-			  !digitalRead(RECUPERATION_BUTTON_MINUS)) ==
-	    BUTTON_EVENT_TYPE_HOLD_TIMEOUT) {
+	bms_recuperation_button_minus.pressed = !digitalRead(RECUPERATION_BUTTON_MINUS);
+	bms_recuperation_button_plus.pressed  = !digitalRead(RECUPERATION_BUTTON_PLUS);
+	
+	if (button_update(&bms_recuperation_button_minus, delta_time_ms) ==
+	    BUTTON_EVENT_HOLD) {
 		bms_recuperation_multiplier += 0.5;
 		if (bms_recuperation_multiplier > 2.0)
 			bms_recuperation_multiplier = 2.0;
@@ -82,9 +84,8 @@ void bms_process_recuperation_buttons()
 			commit_settings();
 	}
 
-	if (button_update(&bms_recuperation_button_plus, millis(),
-			  !digitalRead(RECUPERATION_BUTTON_PLUS)) ==
-	    BUTTON_EVENT_TYPE_HOLD_TIMEOUT) {
+	if (button_update(&bms_recuperation_button_plus, delta_time_ms) ==
+	    BUTTON_EVENT_HOLD) {
 		bms_recuperation_multiplier -= 0.5;
 		if (bms_recuperation_multiplier < 0.0)
 			bms_recuperation_multiplier = 0.0;
@@ -308,6 +309,23 @@ void web_interface_task(void *pv_parameters)
 	}
 }
 
+/************************************************
+ * Delta time
+ ***********************************************/
+static clock_t timestamp_prev = 0;
+static clock_t timestamp      = 0;
+
+clock_t get_delta_time_ms()
+{
+	clock_t delta;
+	
+	timestamp = millis();
+	delta = timestamp - timestamp_prev;
+	timestamp_prev = timestamp;
+	
+	return delta;
+}
+
 void setup()
 {
 	//pinMode(13, INPUT_PULLUP); //disable wifi on boot
@@ -329,12 +347,14 @@ void setup()
 	#endif
 	
 	/** BUTTONS. */
-	button_init(&bms_recuperation_button_minus, millis(), 100, 100);
-	button_init(&bms_recuperation_button_plus, millis(), 100, 100);
+	button_init(&bms_recuperation_button_minus);
+	button_init(&bms_recuperation_button_plus);
 }
 
 void loop()
 {
+	clock_t detla_time_ms = get_delta_time_ms();
+	
 	struct kangoo_can_filter_frame frame = {0};
 
 	//Update driver
@@ -381,5 +401,5 @@ void loop()
 		kangoo_can_filter_esp32_twai_print_status();
 	}
 	
-	//bms_process_recuperation_buttons();
+	//bms_process_recuperation_buttons(detla_time_ms);
 }

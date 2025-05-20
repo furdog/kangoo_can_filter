@@ -1,11 +1,3 @@
-/* TODO NOT BELONGS HERE */
-/* TODO MAKE SAFE READ/WRITE */
-struct kangoo_can_filter_frame {
-	uint16_t id;
-	int8_t   len;
-	uint8_t  data[8];	
-};
-
 /******************************************************************************
  * KANGOO_CAN_FILTER_INIT_ESP32_TWAI
  *****************************************************************************/
