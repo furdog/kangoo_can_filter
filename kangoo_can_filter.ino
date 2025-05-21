@@ -2,7 +2,7 @@
 #include "kangoo_can_filter.h"
 #include "esp32c6_board_driver.h"
 
-//#define WEB_INTERFACE_ENABLED
+#define WEB_INTERFACE_ENABLED
 //#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
 
@@ -335,7 +335,7 @@ void setup()
 	//pinMode(LED_PIN, OUTPUT);
 	//pinMode(LED2_PIN, OUTPUT);
 	Serial.begin(115200);
-	delay(10000);
+	delay(5000);
 
 	kangoo_can_filter_dri_init();
 	
@@ -343,7 +343,7 @@ void setup()
 
 	#ifdef WEB_INTERFACE_ENABLED
 		xTaskCreate(filesystem_task, "filesystem_task", 1024*4, NULL, 1, NULL);
-		xTaskCreate(web_interface_task, "web_interface_task", 10000, NULL, tskIDLE_PRIORITY, NULL);
+		xTaskCreate(web_interface_task, "web_interface_task", 10000, NULL, 1, NULL);
 	#endif
 	
 	/** BUTTONS. */
@@ -353,7 +353,13 @@ void setup()
 
 void loop()
 {
-	clock_t detla_time_ms = get_delta_time_ms();
+	static uint32_t delta_time_errors = 0;
+	static uint32_t ticks = 0;
+	clock_t delta_time_ms = get_delta_time_ms();
+	
+	if (delta_time_ms > 1)
+		delta_time_errors++;
+	ticks++;
 	
 	struct kangoo_can_filter_frame frame = {0};
 
@@ -399,6 +405,11 @@ void loop()
 		
 		//Print twai status to monitor errors (uncomment)
 		kangoo_can_filter_esp32_twai_print_status();
+		
+		printf("dt_err: %lu\n", delta_time_errors);
+		printf("ticks:  %lu\n", ticks);
+		delta_time_errors = 0;
+		ticks = 0;
 	}
 	
 	//bms_process_recuperation_buttons(detla_time_ms);

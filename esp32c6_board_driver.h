@@ -133,7 +133,7 @@ void kangoo_can_filter_esp32_twai_recv(twai_handle_t *bus,
 }
 
 /******************************************************************************
- * Abastaction over specific driver
+ * Abstraction over specific driver
  *****************************************************************************/
 void kangoo_can_filter_dri_init()
 {
