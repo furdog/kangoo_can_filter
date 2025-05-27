@@ -7,6 +7,20 @@
 #include <assert.h>
 
 /******************************************************************************
+ * CAN TOOLS
+ *****************************************************************************/
+
+/******************************************************************************
+ * CAN BUS ABSTRACTION
+ *****************************************************************************/
+/* TODO MAKE SAFE READ/WRITE */
+struct kangoo_can_filter_frame {
+	uint16_t id;
+	int8_t   len;
+	uint8_t  data[8];
+};
+
+/******************************************************************************
  * PHYSICAL BUTTON ABSTRACTION
  *****************************************************************************/
 #define BUTTON_PRESS_TIME_MS 50
@@ -66,16 +80,6 @@ enum button_event button_update(struct button *self, uint32_t delta_time_ms)
 	
 	return ev;
 }
-
-/******************************************************************************
- * CAN BUS ABSTRACTION
- *****************************************************************************/
-/* TODO MAKE SAFE READ/WRITE */
-struct kangoo_can_filter_frame {
-	uint16_t id;
-	int8_t   len;
-	uint8_t  data[8];
-};
 
 /******************************************************************************
  * CAN FILTER ABSTRACTION
@@ -164,6 +168,7 @@ struct kangoo_can_filter_runtime {
 struct kangoo_can_filter {
 	struct kangoo_can_filter_settings _settings;
 	struct kangoo_can_filter_runtime  _runtime;
+	struct kangoo_can_filter_frame    _frame;
 
 	bool reset_wifi;
 };
@@ -172,6 +177,7 @@ void kangoo_can_filter_init(struct kangoo_can_filter *self)
 {
 	struct kangoo_can_filter_settings *s = &self->_settings;
 	struct kangoo_can_filter_runtime  *r = &self->_runtime;
+	struct kangoo_can_filter_frame    *f = &self->_frame;
 
 	/* Initial settings (first run) */
 	s->filt_major_err_en = BMS_FILTERING_ENABLED;
@@ -228,6 +234,45 @@ void kangoo_can_filter_init(struct kangoo_can_filter *self)
 
 	r->diag_counter = 0U; /* Multi-message counter */
 
+	f->len = -1;
+
 	/* Other settings */
 	self->reset_wifi = false;
+}
+
+void kangoo_can_filter_update(struct kangoo_can_filter *self)
+{
+	struct kangoo_can_filter_settings *s = &self->_settings;
+	struct kangoo_can_filter_runtime  *r = &self->_runtime;
+	struct kangoo_can_filter_frame    *f = &self->_frame;
+
+	switch (f->id) {
+	case 0x155:
+		r->voltage_V   = (f->data[6] << 8 | f->data[7]) / 2;
+		r->current_A   = (((f->data[1] & 0x0F) << 8 | f->data[2]) - 0x7D0) / 4.0;
+		r->max_chg_kwt = (f->data[0] / 3.0);
+		r->soc_PCT     = (((uint16_t)f->data[4] << 8) | f->data[5]) / 400.0f;
+		
+		/* If filtering major and minor errors */
+		if (s->filt_major_err_en && s->filt_minor_err_en)
+			f->data[3] = 0x54;
+
+		/* If manual charhing limits enabled */
+		if (s->lim_chg_kwt_en)
+			f->data[0] = s->lim_chg_kwt * 3;
+
+		/* Limit by ubercharge */
+		if (s->ubercharge_en && r->ubercharge_active)
+			f->data[0] = r->lim_chg_kwt * 3;
+	
+		if (s->custom_cap_en) {
+			r->soc_PCT = (r->kwh / s->custom_cap_kwh) * 100.0;
+
+			f->data[4] = (uint16_t)(r->soc_PCT * 400.0f) >> 8 & 0x00FF;
+			f->data[5] = (uint16_t)(r->soc_PCT * 400.0f) >> 0 & 0x00FF;
+		}
+		break;
+	default:
+		break;
+	}
 }

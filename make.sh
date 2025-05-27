@@ -33,6 +33,15 @@ compile_and_upload() {
 	    echo "FATAL ERROR: Setup failed."
 	    exit 1
 	fi
+	
+	# Compress WEB
+	gzip -9 -c index.html > index.html.gz
+
+	# Make C array from WEB
+	xxd -i index.html.gz > index.h
+
+	echo "Web interface has been built successfuly!"
+
 
 	echo "PROPS: " ${PROPS}
 	echo "FQBN: " ${FQBN}
