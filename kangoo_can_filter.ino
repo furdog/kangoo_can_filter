@@ -1,6 +1,5 @@
 //#include "native_board_driver.h"
 #include "kangoo_can_filter.h"
-#include "esp32c6_board_driver.h"
 
 #define WEB_INTERFACE_ENABLED
 //#define USE_NATIVE_CAN
@@ -67,16 +66,15 @@ static bool    bms_ubercharge_active = false;
 
 #include "filesystem.h"
 #include "web_interface.h"
+#include "esp32c6_board_driver.h"
 
-struct button bms_recuperation_button_minus;
-struct button bms_recuperation_button_plus;
 void bms_process_recuperation_buttons(clock_t delta_time_ms)
-{
-	bms_recuperation_button_minus.pressed = !digitalRead(RECUPERATION_BUTTON_MINUS);
-	bms_recuperation_button_plus.pressed  = !digitalRead(RECUPERATION_BUTTON_PLUS);
-	
+{	
 	if (button_update(&bms_recuperation_button_minus, delta_time_ms) ==
 	    BUTTON_EVENT_HOLD) {
+		led_state = !led_state;
+		kangoo_can_filter_led_update();
+		
 		bms_recuperation_multiplier += 0.5;
 		if (bms_recuperation_multiplier > 2.0)
 			bms_recuperation_multiplier = 2.0;
@@ -86,6 +84,9 @@ void bms_process_recuperation_buttons(clock_t delta_time_ms)
 
 	if (button_update(&bms_recuperation_button_plus, delta_time_ms) ==
 	    BUTTON_EVENT_HOLD) {
+		led2_state = !led2_state;
+		kangoo_can_filter_led_update();
+
 		bms_recuperation_multiplier -= 0.5;
 		if (bms_recuperation_multiplier < 0.0)
 			bms_recuperation_multiplier = 0.0;
@@ -288,83 +289,19 @@ void can_filter(struct kangoo_can_filter_frame *frame)
 	}
 }
 
-/** Read dynamic parameters every 100ms. */
-void filesystem_task(void *pv_parameters)
-{
-	filesystem_init();
-
-	while(1) {
-		filesystem_update();
-		vTaskDelay(10000);
-	}
-}
-
-void web_interface_task(void *pv_parameters)
-{
-	web_interface_init();
-
-	while(1) {
-		web_interface_update();
-		vTaskDelay(0);
-	}
-}
-
-/************************************************
- * Delta time
- ***********************************************/
-static clock_t timestamp_prev = 0;
-static clock_t timestamp      = 0;
-
-clock_t get_delta_time_ms()
-{
-	clock_t delta;
-	
-	timestamp = millis();
-	delta = timestamp - timestamp_prev;
-	timestamp_prev = timestamp;
-	
-	return delta;
-}
-
 void setup()
 {
-	//pinMode(13, INPUT_PULLUP); //disable wifi on boot
-	//pinMode(RECUPERATION_BUTTON_MINUS, INPUT_PULLUP);
-	//pinMode(RECUPERATION_BUTTON_PLUS, INPUT_PULLUP);
-	//pinMode(LED2_PIN, OUTPUT);
-	//pinMode(LED_PIN, OUTPUT);
-	//pinMode(LED2_PIN, OUTPUT);
-	Serial.begin(115200);
-	delay(5000);
-
 	kangoo_can_filter_dri_init();
-	
-	//filesystem_init();
-
-	#ifdef WEB_INTERFACE_ENABLED
-		xTaskCreate(filesystem_task, "filesystem_task", 1024*4, NULL, 1, NULL);
-		xTaskCreate(web_interface_task, "web_interface_task", 10000, NULL, 1, NULL);
-	#endif
-	
-	/** BUTTONS. */
-	button_init(&bms_recuperation_button_minus);
-	button_init(&bms_recuperation_button_plus);
 }
 
 void loop()
 {
-	static uint32_t delta_time_errors = 0;
-	static uint32_t ticks = 0;
 	clock_t delta_time_ms = get_delta_time_ms();
-	
-	if (delta_time_ms > 1)
-		delta_time_errors++;
-	ticks++;
 	
 	struct kangoo_can_filter_frame frame = {0};
 
 	//Update driver
-	kangoo_can_filter_dri_update();
+	kangoo_can_filter_dri_update(delta_time_ms);
 
 	kangoo_can_filter_recv_frame(0, &frame);
 	if (frame.len > -1)
@@ -374,6 +311,7 @@ void loop()
 
 		//digitalWrite(LED_PIN, led_state);
 		led_state = !led_state;
+		kangoo_can_filter_led_update();
 	}
 
 	kangoo_can_filter_recv_frame(1, &frame);
@@ -384,33 +322,8 @@ void loop()
 		
 		//digitalWrite(LED2_PIN, led2_state);
 		led2_state = !led2_state;
+		kangoo_can_filter_led_update();
 	}
 
-	static unsigned long timestamp;
-	if (millis() - timestamp >= 5000) {
-		static bool wifi_on = true;
-		//if (wifi_on && !digitalRead(13)) {
-		//	WiFi.disconnect(true);
-		//	WiFi.mode(WIFI_OFF);
-		//	wifi_on = false;
-		//}
-		
-		//filesystem_update();
-		timestamp += 5000;
-
-		//digitalWrite(LED_PIN, led_state);
-		//led_state = !led_state;
-		//digitalWrite(LED2_PIN, led2_state);
-		//led2_state = !led2_state;
-		
-		//Print twai status to monitor errors (uncomment)
-		kangoo_can_filter_esp32_twai_print_status();
-		
-		printf("dt_err: %lu\n", delta_time_errors);
-		printf("ticks:  %lu\n", ticks);
-		delta_time_errors = 0;
-		ticks = 0;
-	}
-	
-	//bms_process_recuperation_buttons(detla_time_ms);
+	bms_process_recuperation_buttons(delta_time_ms);
 }

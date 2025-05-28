@@ -1,3 +1,118 @@
+#include "target.gen.h"
+
+#ifdef CAN_FILTER_V1_NATIVE_ESP32
+#warning Warning: legacy CAN_FILTER_V1_NATIVE_ESP32 is used!
+#endif
+
+/******************************************************************************
+ * TASKS
+ *****************************************************************************/
+void filesystem_task(void *pv_parameters)
+{
+	filesystem_init();
+
+	while(1) {
+		filesystem_update();
+		vTaskDelay(10000);
+	}
+}
+
+void web_interface_task(void *pv_parameters)
+{
+	web_interface_init();
+
+	while(1) {
+		web_interface_update();
+		vTaskDelay(0);
+	}
+}
+
+/******************************************************************************
+ * DELTA TIME
+ *****************************************************************************/
+static clock_t timestamp_prev = 0;
+static clock_t timestamp      = 0;
+
+clock_t get_delta_time_ms()
+{
+	clock_t delta;
+	
+	timestamp = millis();
+	delta = timestamp - timestamp_prev;
+	timestamp_prev = timestamp;
+	
+	return delta;
+}
+
+/******************************************************************************
+ * KANGOO_CAN_FILTER_INIT_ADAFRUIT_MCP2515
+ *****************************************************************************/
+#ifdef CAN_FILTER_V1_NATIVE_ESP32
+
+/* USE Adafruit CAN implementation */
+#include <Adafruit_MCP2515.h>
+
+#define CAN1_SCK   18
+#define CAN1_MOSI  23
+#define CAN1_MISO  19
+#define CAN1_CS    17 
+#define CAN1_INT   -1
+#define CAN1_RESET -1
+#define CAN1_DESIRED_BIT_RATE 1000UL * 500UL // 500 Kb/s
+#define CAN1_QUARTZ_FREQUENCY 16UL * 1000UL * 1000UL // 8 MHz
+
+Adafruit_MCP2515 mcp(CAN1_CS, CAN1_MOSI, CAN1_MISO, CAN1_SCK);
+
+void kangoo_can_filter_init_adafruit_mcp2515()
+{
+	if (!mcp.begin(CAN1_DESIRED_BIT_RATE)) {
+		printf("Adafruit_MCP2515 init failed!\n");
+		while(1) delay(10);
+	}
+	
+	Serial.println("MCP2515 chip found");
+}
+
+/* TODO proper bound checking */
+void kangoo_can_filter_adafruit_mcp2515_send(
+					 struct kangoo_can_filter_frame *frame)
+{
+	int8_t i = 0;
+
+	if (frame->len > -1) {
+		mcp.beginPacket(frame->id);
+
+		for (i = 0; i < frame->len; i++) {
+			mcp.write(frame->data[i]);
+		}
+		
+		mcp.endPacket();
+	}
+}
+
+/* TODO proper bound checking */
+void kangoo_can_filter_adafruit_mcp2515_recv(
+					 struct kangoo_can_filter_frame *frame)
+{
+	int8_t i = 0;
+	int8_t len = mcp.parsePacket();
+
+	if (len && len <= 8) {
+		frame->id  = mcp.packetId();
+
+		while (mcp.available() && i < 8) {
+			frame->data[i] = mcp.read();
+			i++;
+		}
+		
+		frame->len = i;
+	} else {
+		frame->len = -1;
+	}
+}
+
+#endif
+
 /******************************************************************************
  * KANGOO_CAN_FILTER_INIT_ESP32_TWAI
  *****************************************************************************/
@@ -5,11 +120,19 @@
 #include "driver/gpio.h"
 #include "driver/twai.h"
 
+#ifndef CAN_FILTER_V1_NATIVE_ESP32 /* ESP32C6 */
 #define TWAI_BUS_0_TX GPIO_NUM_19
 #define TWAI_BUS_0_RX GPIO_NUM_20
 
 #define TWAI_BUS_1_TX GPIO_NUM_22
 #define TWAI_BUS_1_RX GPIO_NUM_21
+#else /* ADAFRUIT */
+#define TWAI_BUS_0_TX GPIO_NUM_4
+#define TWAI_BUS_0_RX GPIO_NUM_16
+
+#define TWAI_BUS_1_TX GPIO_NUM_4
+#define TWAI_BUS_1_RX GPIO_NUM_16
+#endif
 
 twai_handle_t twai_bus_0;
 twai_handle_t twai_bus_1;
@@ -84,7 +207,7 @@ void kangoo_can_filter_esp32_twai_send(twai_handle_t *bus,
 		int8_t i;
 
 		// Configure message to transmit
-		twai_message_t msg = {0};
+		twai_message_t msg;
 		
 		// Message type and format settings
 		msg.extd = 0;         // Standard vs extended format
@@ -112,7 +235,7 @@ void kangoo_can_filter_esp32_twai_recv(twai_handle_t *bus,
 {
 	assert(bus == &twai_bus_0 || bus == &twai_bus_1);
 						
-	twai_message_t msg = {0};
+	twai_message_t msg;
 
 	if (twai_receive_v2(*bus, &msg, 0) == ESP_OK &&
 	    msg.data_length_code <= 8) {
@@ -133,21 +256,131 @@ void kangoo_can_filter_esp32_twai_recv(twai_handle_t *bus,
 }
 
 /******************************************************************************
+ * LEDS / WIFI / BUTTONS
+ *****************************************************************************/
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
+
+#include <Adafruit_NeoPixel.h>
+
+#define PIN_WS2812B 8
+#define NUM_PIXELS 1
+
+Adafruit_NeoPixel ws2812b(NUM_PIXELS, PIN_WS2812B, NEO_RGB + NEO_KHZ800);
+
+#endif
+
+struct button bms_recuperation_button_minus;
+struct button bms_recuperation_button_plus;
+
+void kangoo_can_filter_init_other()
+{
+#ifdef CAN_FILTER_V1_NATIVE_ESP32
+	pinMode(13, INPUT_PULLUP); //disable wifi on boot
+	pinMode(RECUPERATION_BUTTON_MINUS, INPUT_PULLUP);
+	pinMode(RECUPERATION_BUTTON_PLUS, INPUT_PULLUP);
+	pinMode(LED_PIN, OUTPUT);
+	pinMode(LED2_PIN, OUTPUT);
+
+	button_init(&bms_recuperation_button_minus);
+	button_init(&bms_recuperation_button_plus);
+#else
+	ws2812b.begin();  // initialize WS2812B strip object (REQUIRED)
+#endif
+}
+
+void kangoo_can_filter_led_update()
+{
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
+	ws2812b.setPixelColor(0, ws2812b.Color(led_state ? 255 : 0, 0, led2_state ? 255 : 0));
+	ws2812b.show();
+#else
+	digitalWrite(LED_PIN, led_state);
+	digitalWrite(LED2_PIN, led2_state);
+#endif
+}
+
+void kangoo_can_filter_update_other(uint32_t delta_time_ms)
+{
+	static uint32_t delta_time_errors = 0;
+	static uint32_t ticks = 0;
+	static uint32_t timestamp;
+	
+	if (delta_time_ms > 1)
+		delta_time_errors++;
+	ticks++;
+
+	if (millis() - timestamp >= 5000) {
+#ifdef CAN_FILTER_V1_NATIVE_ESP32
+		static bool wifi_on = true;
+		if (wifi_on && !digitalRead(13)) {
+			WiFi.disconnect(true);
+			WiFi.mode(WIFI_OFF);
+			wifi_on = false;
+		}
+
+		digitalWrite(LED_PIN, led_state);
+		led_state = !led_state;
+		digitalWrite(LED2_PIN, led2_state);
+		led2_state = !led2_state;
+#else
+		led_state = !led_state;
+		led2_state = !led2_state;
+		kangoo_can_filter_led_update();
+#endif
+
+		timestamp += 5000;
+		
+		//Print twai status to monitor errors (uncomment)
+		kangoo_can_filter_esp32_twai_print_status();
+		
+		printf("dt_err: %lu\n", delta_time_errors);
+		printf("ticks:  %lu\n", ticks);
+		delta_time_errors = 0;
+		ticks = 0;
+	}
+
+#ifdef CAN_FILTER_V1_NATIVE_ESP32
+	bms_recuperation_button_minus.pressed = !digitalRead(RECUPERATION_BUTTON_MINUS);
+	bms_recuperation_button_plus.pressed  = !digitalRead(RECUPERATION_BUTTON_PLUS);
+#endif
+}
+
+/******************************************************************************
  * Abstraction over specific driver
  *****************************************************************************/
 void kangoo_can_filter_dri_init()
 {
+	Serial.begin(115200);
+	//delay(5000);
+
+#ifdef WEB_INTERFACE_ENABLED
+		xTaskCreate(filesystem_task, "filesystem_task", 1024*4, NULL, 1, NULL);
+
+	#ifdef CAN_FILTER_V1_NATIVE_ESP32
+		xTaskCreate(web_interface_task, "web_interface_task", 10000, NULL, 0, NULL);
+	#else
+		xTaskCreate(web_interface_task, "web_interface_task", 10000, NULL, 1, NULL);
+	#endif
+#endif
+
+	kangoo_can_filter_init_other();
+
 	kangoo_can_filter_init_esp32_twai(&twai_bus_0);
+
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
 	kangoo_can_filter_init_esp32_twai(&twai_bus_1);
+#else
+	kangoo_can_filter_init_adafruit_mcp2515();
+#endif
 }
 
-void kangoo_can_filter_dri_update()
+void kangoo_can_filter_dri_update(uint32_t delta_time_ms)
 {
 	uint32_t alerts;
 
 	alerts = 0;
 	twai_read_alerts_v2(twai_bus_0, &alerts, 0);
-	
+
 	if (alerts & TWAI_ALERT_BUS_OFF) {
 		twai_bus_0_recovery = true;
 		printf("TWAI_ALERT_BUS_OFF\n");
@@ -173,6 +406,7 @@ void kangoo_can_filter_dri_update()
 	}
 	*/
 
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
 	alerts = 0;
 	twai_read_alerts_v2(twai_bus_1, &alerts, 0);
 
@@ -185,6 +419,9 @@ void kangoo_can_filter_dri_update()
 		kangoo_can_filter_init_esp32_twai(&twai_bus_1);
 		twai_bus_1_recovery = false;
 	}
+#endif
+
+	kangoo_can_filter_update_other(delta_time_ms);
 }
 
 void kangoo_can_filter_send_frame(uint8_t bus_id,
@@ -193,7 +430,11 @@ void kangoo_can_filter_send_frame(uint8_t bus_id,
 	if (bus_id == 0) {
 		kangoo_can_filter_esp32_twai_send(&twai_bus_0, frame);
 	} else if (bus_id == 1) {
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
 		kangoo_can_filter_esp32_twai_send(&twai_bus_1, frame);
+#else
+		kangoo_can_filter_adafruit_mcp2515_send(frame);
+#endif
 	} else {
 		frame->len = -1;
 	}
@@ -205,7 +446,11 @@ void kangoo_can_filter_recv_frame(uint8_t bus_id,
 	if (bus_id == 0) {
 		kangoo_can_filter_esp32_twai_recv(&twai_bus_0, frame);
 	} else if (bus_id == 1) {
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
 		kangoo_can_filter_esp32_twai_recv(&twai_bus_1, frame);
+#else
+		kangoo_can_filter_adafruit_mcp2515_recv(frame);
+#endif
 	} else {
 		frame->len = -1;
 	}

@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
-#include "index.h"
+#include "index.gen.h"
 
 DNSServer dns_server;
 WebServer web_server(80);
@@ -254,7 +254,9 @@ void download_firmware()
 			Serial.println("Update write ok...");
 	} else if(upload.status == UPLOAD_FILE_END) {
 		if (Update.end(true)) {
-			Serial.println("Update end success");			
+			Serial.println("Update end success");
+			send_ok();
+			delay(5000);			
 			ESP.restart();
 		} else {
 			Serial.println("Update end fail");

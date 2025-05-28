@@ -1,32 +1,44 @@
 #!/bin/bash
 
-SERIAL_PORT=COM26
-MONITOR_BAUD=115200
-
-#Which hardware to use
-#BOARD=esp32:esp32:nodemcu-32s
-#BOARD=esp8266:esp8266:nodemcu
-#BOARD=esp32:esp32:nodemcu-32s
-BOARD=esp32:esp32:esp32c6
-
-FQBN=:UploadSpeed=921600
-
+###############################################################################
+# CONFIGURATION:
+###############################################################################
 COMPILER=./tools/arduino-cli
 
-if [[ "$BOARD" == "esp8266:esp8266:nodemcu" ]]; then
-	FQBN=
-	PROPS=
-	echo "$BOARD"
-elif [[ "$BOARD" == "esp32:esp32:nodemcu-32s" ]]; then
+SERIAL_PORT=COM3
+MONITOR_BAUD=115200
+OTA_IP="7.7.7.7"
+
+TARGET=can_filter_v1_native_esp32
+#TARGET=can_filter_v2_native_esp32c6
+
+###############################################################################
+# TARGETS AVAILABLE
+###############################################################################
+# enumerate (and empty) all generated files
+> target.gen.h
+> index.gen.h
+
+if [ "$TARGET" == "can_filter_v1_native_esp32" ]; then
+	BOARD=esp32:esp32:nodemcu-32s
+	FQBN=:UploadSpeed=921600
 	PROPS='--build-property build.partitions=partitions
 	       --build-property upload.maximum_size=1638400'
 	echo "$BOARD"
-elif [[ "$BOARD" == "esp32:esp32:esp32c6" ]]; then
+	echo "#define CAN_FILTER_V1_NATIVE_ESP32" > target.gen.h
+elif [ "$TARGET" == "can_filter_v2_native_esp32c6" ]; then
+	BOARD=esp32:esp32:esp32c6
 	FQBN=:CDCOnBoot=cdc
+else
+	echo "Bad target!"
+	exit 1
 fi
 
-# Function to compile and upload
-compile_and_upload() {
+
+###############################################################################
+# MAIN
+###############################################################################
+compile() {
 	# Setup tools and libraries
 	./setup.sh
 	if [[ $? -ne 0 ]]; then
@@ -38,30 +50,26 @@ compile_and_upload() {
 	gzip -9 -c index.html > index.html.gz
 
 	# Make C array from WEB
-	xxd -i index.html.gz > index.h
+	xxd -i index.html.gz > index.gen.h
 
 	echo "Web interface has been built successfuly!"
 
 
 	echo "PROPS: " ${PROPS}
 	echo "FQBN: " ${FQBN}
-	while ! ${COMPILER} compile -b ${BOARD}${FQBN} --warnings "all" ${PROPS} -e --libraries "libraries/" -v; do
+	while ! ${COMPILER} compile -b ${BOARD}${FQBN} --warnings "all" \
+			   ${PROPS} -e --libraries "libraries/" -v; do
 		read -p "Press any key to continue "
 		exit
 	done
-    
-	if [ -n "${SERIAL_PORT+x}" ]; then
-		while ! ${COMPILER} upload -b ${BOARD}${FQBN} -p ${SERIAL_PORT} -v; do
-			sleep 1
-		done
-	fi
 }
 
 # Function to monitor
 monitor() {
 	if [ -n "${SERIAL_PORT+x}" ]; then
 		while true; do
-			${COMPILER} monitor -p ${SERIAL_PORT} --config baudrate=${MONITOR_BAUD} -v;
+			${COMPILER} monitor -p ${SERIAL_PORT} \
+				  --config baudrate=${MONITOR_BAUD} -v;
 			sleep 1
 		done
 	fi
@@ -69,10 +77,31 @@ monitor() {
 
 upload() {
 	if [ -n "${SERIAL_PORT+x}" ]; then
-		while ! ${COMPILER} upload -b ${BOARD}${FQBN} -p ${SERIAL_PORT} -v; do
+		while ! ${COMPILER} upload -b ${BOARD}${FQBN} \
+				   -p ${SERIAL_PORT} -v; do
 			sleep 1
 		done
 	fi
+}
+
+web_upload() {
+	local BOARD_PATH="${BOARD//:/\.}"  # Replace ':' with '.'
+	local FILE="build/${BOARD_PATH}/$(basename "$PWD").ino.bin"
+
+	if [ ! -f "$FILE" ]; then
+		echo "Firmware file not found: $FILE"
+		return 1
+	fi
+
+	while true; do
+		echo "Uploading $FILE to http://${OTA_IP}/update..."
+		#curl -s -T "$FILE" http://${OTA_IP}/update && break
+		curl -F "file=@$FILE" http://${OTA_IP}/update
+		echo "Upload failed, retrying in 1 second..."
+		sleep 1
+	done
+
+	echo "Upload complete."
 }
 
 # Check if the argument is "monitor"
@@ -82,8 +111,14 @@ elif [ "$1" == "upload" ]; then
 	upload
 elif [ "$1" == "flash" ]; then
 	upload
+elif [[ "$1" == "web" && ( "$2" == "upload" || "$2" == "flash" ) ]]; then
+	web_upload
+elif [ "$1" == "web" ]; then
+	compile
+	web_upload
 else
-	compile_and_upload
+	compile
+	upload
 	monitor
 fi
 

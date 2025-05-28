@@ -6,5 +6,5 @@ libraries
 *.log
 *.dump
 *.ctu-info
-index.h
 index.html.gz
+*.gen.*
