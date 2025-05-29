@@ -66,7 +66,7 @@ static bool    bms_ubercharge_active = false;
 
 #include "filesystem.h"
 #include "web_interface.h"
-#include "esp32c6_board_driver.h"
+#include "universal_board_driver.h"
 
 void bms_process_recuperation_buttons(clock_t delta_time_ms)
 {	
