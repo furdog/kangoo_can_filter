@@ -22,7 +22,7 @@
 #define BMS_KWT_COUNTER_ENABLED               false
 
 #define RECUPERATION_BUTTON_MINUS 25
-#define RECUPERATION_BUTTON_PLUS 33
+#define RECUPERATION_BUTTON_PLUS 26
 #define LED_PIN 2
 #define LED2_PIN 15
 bool led_state = false;
