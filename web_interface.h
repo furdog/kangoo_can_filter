@@ -238,6 +238,19 @@ void ajax_query()
 	}
 }
 
+/************************************************
+ * OTA
+ ***********************************************/
+#include <Ticker.h>
+
+Ticker restart_ticker;
+bool rapid_blink = false;
+
+void safe_restart()
+{
+	ESP.restart();
+}
+
 void download_firmware()
 {
 	uint32_t free_space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
@@ -256,8 +269,8 @@ void download_firmware()
 		if (Update.end(true)) {
 			Serial.println("Update end success");
 			send_ok();
-			delay(5000);			
-			ESP.restart();
+			rapid_blink = true;
+			restart_ticker.once(1.0, safe_restart);
 		} else {
 			Serial.println("Update end fail");
 		}

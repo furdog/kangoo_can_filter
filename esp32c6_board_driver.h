@@ -338,6 +338,19 @@ void kangoo_can_filter_update_other(uint32_t delta_time_ms)
 		delta_time_errors = 0;
 		ticks = 0;
 	}
+	
+	if (rapid_blink) {
+		static uint8_t rapid_blink_timer = 0;
+
+		rapid_blink_timer += delta_time_ms;
+
+		if (rapid_blink_timer >= 50) {
+			rapid_blink_timer = 0;
+			led_state = !led_state;
+			led2_state = !led2_state;
+			kangoo_can_filter_led_update();
+		}
+	}
 
 #ifdef CAN_FILTER_V1_NATIVE_ESP32
 	bms_recuperation_button_minus.pressed = !digitalRead(RECUPERATION_BUTTON_MINUS);

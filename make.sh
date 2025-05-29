@@ -102,8 +102,7 @@ web_upload() {
 
 	while true; do
 		echo "Uploading $FILE to http://${OTA_IP}/update..."
-		#curl -s -T "$FILE" http://${OTA_IP}/update && break
-		curl -F "file=@$FILE" http://${OTA_IP}/update
+		curl -F "file=@$FILE" http://${OTA_IP}/update && break
 		echo "Upload failed, retrying in 1 second..."
 		sleep 1
 	done
