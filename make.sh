@@ -34,10 +34,14 @@ else
 	exit 1
 fi
 
-
 ###############################################################################
 # MAIN
 ###############################################################################
+# Set environment variables
+if [ -z "${GIT_REPO_VERSION+x}" ]; then
+	export GIT_REPO_VERSION=$(git describe --tags)
+fi
+
 compile() {
 	# Setup tools and libraries
 	./setup.sh
@@ -45,15 +49,15 @@ compile() {
 	    echo "FATAL ERROR: Setup failed."
 	    exit 1
 	fi
+
+	# Replace environment variables inside web page
+	awk/ENV.awk web/index.html > index.gen.html
 	
 	# Compress WEB
-	gzip -9 -c index.html > index.html.gz
+	gzip -9 -c index.gen.html > index.gen.html.gz
 
 	# Make C array from WEB
-	xxd -i index.html.gz > index.gen.h
-
-	echo "Web interface has been built successfuly!"
-
+	xxd -i index.gen.html.gz > index.gen.h
 
 	echo "PROPS: " ${PROPS}
 	echo "FQBN: " ${FQBN}
