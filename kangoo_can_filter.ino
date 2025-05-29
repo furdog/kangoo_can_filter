@@ -298,7 +298,7 @@ void loop()
 {
 	clock_t delta_time_ms = get_delta_time_ms();
 	
-	struct kangoo_can_filter_frame frame = {0};
+	struct kangoo_can_filter_frame frame;
 
 	//Update driver
 	kangoo_can_filter_dri_update(delta_time_ms);

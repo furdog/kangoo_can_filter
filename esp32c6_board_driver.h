@@ -1,7 +1,7 @@
 #include "target.gen.h"
 
 #ifdef CAN_FILTER_V1_NATIVE_ESP32
-#warning Warning: legacy CAN_FILTER_V1_NATIVE_ESP32 is used!
+#warning legacy CAN_FILTER_V1_NATIVE_ESP32 is used!
 #endif
 
 /******************************************************************************

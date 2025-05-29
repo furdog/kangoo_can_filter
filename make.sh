@@ -12,6 +12,8 @@ OTA_IP="7.7.7.7"
 TARGET=can_filter_v1_native_esp32
 #TARGET=can_filter_v2_native_esp32c6
 
+#EXTRA_FLAGS="-v"
+
 ###############################################################################
 # TARGETS AVAILABLE
 ###############################################################################
@@ -62,7 +64,8 @@ compile() {
 	echo "PROPS: " ${PROPS}
 	echo "FQBN: " ${FQBN}
 	while ! ${COMPILER} compile -b ${BOARD}${FQBN} --warnings "all" \
-			   ${PROPS} -e --libraries "libraries/" -v; do
+			   ${PROPS} -e --libraries "libraries/" \
+			   ${EXTRA_FLAGS}; do
 		read -p "Press any key to continue "
 		exit
 	done
@@ -73,7 +76,7 @@ monitor() {
 	if [ -n "${SERIAL_PORT+x}" ]; then
 		while true; do
 			${COMPILER} monitor -p ${SERIAL_PORT} \
-				  --config baudrate=${MONITOR_BAUD} -v;
+			      --config baudrate=${MONITOR_BAUD} ${EXTRA_FLAGS};
 			sleep 1
 		done
 	fi
@@ -82,7 +85,7 @@ monitor() {
 upload() {
 	if [ -n "${SERIAL_PORT+x}" ]; then
 		while ! ${COMPILER} upload -b ${BOARD}${FQBN} \
-				   -p ${SERIAL_PORT} -v; do
+				   -p ${SERIAL_PORT} ${EXTRA_FLAGS}; do
 			sleep 1
 		done
 	fi

@@ -26,8 +26,8 @@ void ajax_query()
 		web_server.sendHeader("Content-Type", "text/html");
 
 		web_server.send_P(200, "text/html",
-				  (const char *)index_html_gz,
-						index_html_gz_len);
+				  (const char *)index_gen_html_gz,
+						index_gen_html_gz_len);
 		return;
 	}
 	
