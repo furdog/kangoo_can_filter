@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "kangoo_can_filter.h"
+#include "fake_bms.h"
 
 struct button b;
 
