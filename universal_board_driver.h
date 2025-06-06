@@ -1,3 +1,4 @@
+#include "kangoo_can_frame.h"
 #include "target.gen.h"
 
 #ifdef CAN_FILTER_V1_NATIVE_ESP32
@@ -75,7 +76,7 @@ void kangoo_can_filter_init_adafruit_mcp2515()
 
 /* TODO proper bound checking */
 void kangoo_can_filter_adafruit_mcp2515_send(
-					 struct kangoo_can_filter_frame *frame)
+					 struct kangoo_can_frame *frame)
 {
 	int8_t i = 0;
 
@@ -92,7 +93,7 @@ void kangoo_can_filter_adafruit_mcp2515_send(
 
 /* TODO proper bound checking */
 void kangoo_can_filter_adafruit_mcp2515_recv(
-					 struct kangoo_can_filter_frame *frame)
+					 struct kangoo_can_frame *frame)
 {
 	int8_t i = 0;
 	int8_t len = mcp.parsePacket();
@@ -196,7 +197,7 @@ void kangoo_can_filter_esp32_twai_print_status()
 
 /* TODO proper bound checking */
 void kangoo_can_filter_esp32_twai_send(twai_handle_t *bus,
-				       struct kangoo_can_filter_frame *frame)
+				       struct kangoo_can_frame *frame)
 {
 	assert(bus == &twai_bus_0 || bus == &twai_bus_1);
 
@@ -231,7 +232,7 @@ void kangoo_can_filter_esp32_twai_send(twai_handle_t *bus,
 
 /* TODO proper bound checking */
 void kangoo_can_filter_esp32_twai_recv(twai_handle_t *bus,
-				       struct kangoo_can_filter_frame *frame)
+				       struct kangoo_can_frame *frame)
 {
 	assert(bus == &twai_bus_0 || bus == &twai_bus_1);
 						
@@ -438,7 +439,7 @@ void kangoo_can_filter_dri_update(uint32_t delta_time_ms)
 }
 
 void kangoo_can_filter_send_frame(uint8_t bus_id,
-				  struct kangoo_can_filter_frame *frame)
+				  struct kangoo_can_frame *frame)
 {
 	if (bus_id == 0) {
 		kangoo_can_filter_esp32_twai_send(&twai_bus_0, frame);
@@ -454,7 +455,7 @@ void kangoo_can_filter_send_frame(uint8_t bus_id,
 }
 
 void kangoo_can_filter_recv_frame(uint8_t bus_id,
-				  struct kangoo_can_filter_frame *frame)
+				  struct kangoo_can_frame *frame)
 {
 	if (bus_id == 0) {
 		kangoo_can_filter_esp32_twai_recv(&twai_bus_0, frame);

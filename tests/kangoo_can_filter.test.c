@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "kangoo_can_filter.h"
-#include "fake_bms.h"
+#include "kangoo_fake_bms.h"
 
 struct button b;
 
@@ -38,7 +38,7 @@ struct kangoo_fake_bms fbms;
 void fake_bms_test_start(struct kangoo_fake_bms *self)
 {
 	uint16_t i;
-	struct kangoo_fake_bms_can_frame frame;
+	struct kangoo_can_frame frame;
 
 	kangoo_fake_bms_start(self);
 

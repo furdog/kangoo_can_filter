@@ -2,6 +2,7 @@
 #include "kangoo_can_filter.h"
 
 #define WEB_INTERFACE_ENABLED
+#define FAKE_BMS_ENABLED
 //#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
 
@@ -157,10 +158,54 @@ bool ubercharge()
 }
 #endif
 
-void can_filter(struct kangoo_can_filter_frame *frame)
+#ifdef FAKE_BMS_ENABLED
+/* Fake bms stuff */
+int8_t kangoo_can_filter_current_bus = -1;
+int8_t kangoo_can_filter_fake_bms_bus = -1;
+struct kangoo_can_filter_fake_bms fbms;
+
+/* send any fake bms frame */
+void kangoo_fake_bms_recv_frame(struct kangoo_can_frame *frame)
+{
+	int8_t ecu_bus = -1;
+
+	if (kangoo_can_filter_fake_bms_bus > -1) {
+		ecu_bus = (kangoo_can_filter_fake_bms_bus == 1) ? 0 : 1;
+	}
+
+	if (ecu_bus > -1 && kangoo_can_filter_current_bus == ecu_bus)
+	{
+		kangoo_fake_bms_can_frame_write(&fbms.fbms, *frame);
+	}
+}
+
+/* send any fake bms frame if available */
+void kangoo_fake_bms_send_frames()
+{
+	struct kangoo_can_frame *frame_for_ecu;
+	int8_t ecu_bus = -1;
+
+	if (kangoo_can_filter_fake_bms_bus > -1) {
+		ecu_bus = (kangoo_can_filter_fake_bms_bus == 1) ? 0 : 1;
+	}
+
+	frame_for_ecu = kangoo_fake_bms_can_frame_read(&fbms.fbms);
+
+	if (frame_for_ecu && ecu_bus > -1) {
+		kangoo_can_filter_send_frame(ecu_bus, frame_for_ecu);
+	}
+}
+#endif
+
+void can_filter(struct kangoo_can_frame *frame)
 {	
 	switch (frame->id) {
 	case 0x155:
+#ifdef FAKE_BMS_ENABLED
+		kangoo_can_filter_fake_bms_report_real_bms_message_triggered(&fbms);
+		kangoo_can_filter_fake_bms_bus = kangoo_can_filter_current_bus;
+#endif
+
 		bms_voltage = (frame->data[6] << 8 | frame->data[7]) / 2;
 		bms_current = (((frame->data[1] & 0x0F) << 8 | frame->data[2]) - 0x7D0) / 4.0;
 		bms_max_input_kwt = (frame->data[0] / 3.0);
@@ -253,6 +298,11 @@ void can_filter(struct kangoo_can_filter_frame *frame)
 		break;
 	
 	case 0x428:
+#ifdef FAKE_BMS_ENABLED
+		kangoo_can_filter_fake_bms_bus =
+			kangoo_can_filter_current_bus == 1 ? 0 : 1;
+#endif
+
   		bms_charger_plugged_in = (frame->data[6] > 0x00) ? true : false;
 		break;
   
@@ -292,13 +342,18 @@ void can_filter(struct kangoo_can_filter_frame *frame)
 void setup()
 {
 	kangoo_can_filter_dri_init();
+
+#ifdef FAKE_BMS_ENABLED
+	kangoo_can_filter_fake_bms_init(&fbms);
+#endif
 }
 
 void loop()
 {
 	clock_t delta_time_ms = get_delta_time_ms();
+	kangoo_can_filter_fake_bms_update(&fbms, delta_time_ms);
 	
-	struct kangoo_can_filter_frame frame;
+	struct kangoo_can_frame frame;
 
 	//Update driver
 	kangoo_can_filter_dri_update(delta_time_ms);
@@ -306,7 +361,12 @@ void loop()
 	kangoo_can_filter_recv_frame(0, &frame);
 	if (frame.len > -1)
 	{
+		kangoo_can_filter_current_bus = 0;
+
 		can_filter(&frame);
+#ifdef FAKE_BMS_ENABLED
+		kangoo_fake_bms_recv_frame(&frame);
+#endif
 		kangoo_can_filter_send_frame(1, &frame);
 
 		//digitalWrite(LED_PIN, led_state);
@@ -317,13 +377,22 @@ void loop()
 	kangoo_can_filter_recv_frame(1, &frame);
 	if (frame.len > -1)
 	{
+		kangoo_can_filter_current_bus = 1;
+
 		can_filter(&frame);
+#ifdef FAKE_BMS_ENABLED
+		kangoo_fake_bms_recv_frame(&frame);
+#endif
 		kangoo_can_filter_send_frame(0, &frame);
 		
 		//digitalWrite(LED2_PIN, led2_state);
 		led2_state = !led2_state;
 		kangoo_can_filter_led_update();
 	}
+
+#ifdef FAKE_BMS_ENABLED
+	kangoo_fake_bms_send_frames();
+#endif
 
 	bms_process_recuperation_buttons(delta_time_ms);
 }

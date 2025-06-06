@@ -6,19 +6,12 @@
 #include <stdint.h>
 #include <assert.h>
 
+#include "kangoo_can_frame.h"
+#include "kangoo_fake_bms.h"
+
 /******************************************************************************
  * CAN TOOLS
  *****************************************************************************/
-
-/******************************************************************************
- * CAN BUS ABSTRACTION
- *****************************************************************************/
-/* TODO MAKE SAFE READ/WRITE */
-struct kangoo_can_filter_frame {
-	uint16_t id;
-	int8_t   len;
-	uint8_t  data[8];
-};
 
 /******************************************************************************
  * PHYSICAL BUTTON ABSTRACTION
@@ -168,7 +161,7 @@ struct kangoo_can_filter_runtime {
 struct kangoo_can_filter {
 	struct kangoo_can_filter_settings _settings;
 	struct kangoo_can_filter_runtime  _runtime;
-	struct kangoo_can_filter_frame    _frame;
+	struct kangoo_can_frame           _frame;
 
 	bool reset_wifi;
 };
@@ -177,7 +170,7 @@ void kangoo_can_filter_init(struct kangoo_can_filter *self)
 {
 	struct kangoo_can_filter_settings *s = &self->_settings;
 	struct kangoo_can_filter_runtime  *r = &self->_runtime;
-	struct kangoo_can_filter_frame    *f = &self->_frame;
+	struct kangoo_can_frame           *f = &self->_frame;
 
 	/* Initial settings (first run) */
 	s->filt_major_err_en = BMS_FILTERING_ENABLED;
@@ -242,37 +235,102 @@ void kangoo_can_filter_init(struct kangoo_can_filter *self)
 
 void kangoo_can_filter_update(struct kangoo_can_filter *self)
 {
-	struct kangoo_can_filter_settings *s = &self->_settings;
-	struct kangoo_can_filter_runtime  *r = &self->_runtime;
-	struct kangoo_can_filter_frame    *f = &self->_frame;
-
+	/*struct kangoo_can_filter_settings *s = &self->_settings;
+	struct kangoo_can_filter_runtime    *r = &self->_runtime;*/
+	struct kangoo_can_frame             *f = &self->_frame;
+	
 	switch (f->id) {
 	case 0x155:
-		r->voltage_V   = (f->data[6] << 8 | f->data[7]) / 2;
+		/*r->voltage_V   = (f->data[6] << 8 | f->data[7]) / 2;
 		r->current_A   = (((f->data[1] & 0x0F) << 8 | f->data[2]) - 0x7D0) / 4.0;
 		r->max_chg_kwt = (f->data[0] / 3.0);
-		r->soc_PCT     = (((uint16_t)f->data[4] << 8) | f->data[5]) / 400.0f;
+		r->soc_PCT     = (((uint16_t)f->data[4] << 8) | f->data[5]) / 400.0f;*/
 		
 		/* If filtering major and minor errors */
-		if (s->filt_major_err_en && s->filt_minor_err_en)
+		/*if (s->filt_major_err_en && s->filt_minor_err_en) {
 			f->data[3] = 0x54;
+		}*/
 
 		/* If manual charhing limits enabled */
-		if (s->lim_chg_kwt_en)
+		/*if (s->lim_chg_kwt_en) {
 			f->data[0] = s->lim_chg_kwt * 3;
-
-		/* Limit by ubercharge */
-		if (s->ubercharge_en && r->ubercharge_active)
-			f->data[0] = r->lim_chg_kwt * 3;
+		}*/
 	
-		if (s->custom_cap_en) {
+		/* Limit by ubercharge */
+		/*if (s->ubercharge_en && r->ubercharge_active) {
+			f->data[0] = r->lim_chg_kwt * 3;
+		}*/
+	
+		/*if (s->custom_cap_en) {
 			r->soc_PCT = (r->kwh / s->custom_cap_kwh) * 100.0;
 
 			f->data[4] = (uint16_t)(r->soc_PCT * 400.0f) >> 8 & 0x00FF;
 			f->data[5] = (uint16_t)(r->soc_PCT * 400.0f) >> 0 & 0x00FF;
-		}
+		}*/
 		break;
+
 	default:
+		break;
+	}
+}
+
+/******************************************************************************
+ * AUTOMATIC FAKE BMS ACTIVATION
+ *****************************************************************************/
+#define KANGOO_CAN_FILTER_FAKE_BMS_START_TIME_MS 5000U
+
+struct kangoo_can_filter_fake_bms {
+	struct kangoo_fake_bms fbms;
+
+	uint8_t _state;
+
+	uint32_t _real_bms_last_seen_timeout_ms;
+};
+
+void kangoo_can_filter_fake_bms_init(struct kangoo_can_filter_fake_bms *self)
+{
+	kangoo_fake_bms_init(&self->fbms);
+
+	self->_state = 0U;
+
+	self->_real_bms_last_seen_timeout_ms = 0U;
+}
+
+void kangoo_can_filter_fake_bms_report_real_bms_message_triggered(
+			struct kangoo_can_filter_fake_bms *self)
+{
+	/* Reset timer (prevents fake bms start due to timeout) */
+	self->_real_bms_last_seen_timeout_ms = 0U;
+}
+
+void kangoo_can_filter_fake_bms_update(
+				struct kangoo_can_filter_fake_bms *self,
+				uint32_t delta_time_ms)
+{
+	kangoo_fake_bms_update(&self->fbms, delta_time_ms);
+
+	switch (self->_state) {
+	case 0U: /* Check bms presence (increment timer until timeout) */
+		if (self->_real_bms_last_seen_timeout_ms >=
+		    KANGOO_CAN_FILTER_FAKE_BMS_START_TIME_MS) {
+			kangoo_fake_bms_start(&self->fbms);
+			self->_state = 1;
+		} else {
+			self->_real_bms_last_seen_timeout_ms += delta_time_ms;
+		}
+		
+		break;
+	
+	case 1U:
+		if (self->_real_bms_last_seen_timeout_ms == 0U) {
+			kangoo_fake_bms_stop(&self->fbms);
+			self->_state = 0U;
+		}
+		
+		break;
+
+	default:
+		assert(0U);
 		break;
 	}
 }

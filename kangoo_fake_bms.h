@@ -1,9 +1,5 @@
-struct kangoo_fake_bms_can_frame
-{
-	uint32_t id;
-	int8_t   len;
-	uint8_t  data[8];
-};
+#ifndef KANGOO_FAKE_BMS_GUARD
+#define KANGOO_FAKE_BMS_GUARD
 
 enum kangoo_fake_bms_state
 {
@@ -27,8 +23,8 @@ struct kangoo_fake_bms {
 	uint32_t _msg_2_timer_ms;
 
 	uint8_t _frames_available;
-	struct kangoo_fake_bms_can_frame _input;
-	struct kangoo_fake_bms_can_frame _frames[3];
+	struct kangoo_can_frame _input;
+	struct kangoo_can_frame _frames[3];
 };
 
 /******************************************************************************
@@ -70,8 +66,8 @@ void _kangoo_fake_bms_parse_control_msg(struct kangoo_fake_bms *self)
 		break;
 		
 	case 0x00U:
-		/* Stop fake bms communication */
-		_kangoo_fake_bms_stop_communication(self);
+		/* Don't send messages. */
+		self->_state = KANGOO_FAKE_BMS_STATE_WAIT_CONTROL_MSG;
 		break;
 	
 	default:
@@ -81,7 +77,7 @@ void _kangoo_fake_bms_parse_control_msg(struct kangoo_fake_bms *self)
 
 void _kangoo_parse_input_frames(struct kangoo_fake_bms *self)
 {
-	struct kangoo_fake_bms_can_frame *frame = &self->_input;
+	struct kangoo_can_frame *frame = &self->_input;
 
 	switch (frame->id) {
 	case 0x423U:
@@ -220,10 +216,10 @@ void kangoo_fake_bms_stop(struct kangoo_fake_bms *self)
 	self->_state = KANGOO_FAKE_BMS_STATE_NONE;
 }
 
-struct kangoo_fake_bms_can_frame *kangoo_fake_bms_can_frame_read(
+struct kangoo_can_frame *kangoo_fake_bms_can_frame_read(
 						struct kangoo_fake_bms *self)
 {
-	struct kangoo_fake_bms_can_frame *result = NULL;
+	struct kangoo_can_frame *result = NULL;
 
 	if (self->_frames_available > 0U) {
 		result = &self->_frames[self->_frames_available - 1U];
@@ -235,7 +231,7 @@ struct kangoo_fake_bms_can_frame *kangoo_fake_bms_can_frame_read(
 }
 
 void kangoo_fake_bms_can_frame_write(struct kangoo_fake_bms *self,
-				     struct kangoo_fake_bms_can_frame frame)
+				     struct kangoo_can_frame frame)
 {
 	self->_input = frame;
 }
@@ -278,3 +274,5 @@ void kangoo_fake_bms_update(struct kangoo_fake_bms *self,
 		break;
 	}
 }
+
+#endif /* KANGOO_FAKE_BMS_GUARD */
