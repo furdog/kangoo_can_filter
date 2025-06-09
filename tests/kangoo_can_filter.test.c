@@ -39,6 +39,7 @@ void fake_bms_test_start(struct kangoo_fake_bms *self)
 {
 	uint16_t i;
 	struct kangoo_can_frame frame;
+	struct kangoo_can_frame *read;
 
 	kangoo_fake_bms_start(self);
 
@@ -51,8 +52,12 @@ void fake_bms_test_start(struct kangoo_fake_bms *self)
 	for (i = 0; i < 9000; i++) {
 		kangoo_fake_bms_update(self, 1);
 
-		if ((i % 10) == 0 && i != 0) {		
-			assert(kangoo_fake_bms_can_frame_read(self) != NULL);
+		if ((i % 10) == 0 && i != 0) {
+			read = kangoo_fake_bms_can_frame_read(self);
+			assert(read != NULL);
+			kangoo_can_frame_print(read);
+
+
 			assert(kangoo_fake_bms_can_frame_read(self) == NULL);
 
 			/* Update immediately, so we can proccess other
@@ -61,18 +66,30 @@ void fake_bms_test_start(struct kangoo_fake_bms *self)
 		}
 
 		if ((i % 100) == 0 && i != 0) {
-			assert(kangoo_fake_bms_can_frame_read(self) != NULL);
-			assert(kangoo_fake_bms_can_frame_read(self) != NULL);
-			assert(kangoo_fake_bms_can_frame_read(self) != NULL);
+			read = kangoo_fake_bms_can_frame_read(self);
+			assert(read != NULL);
+			kangoo_can_frame_print(read);
+
+			read = kangoo_fake_bms_can_frame_read(self);
+			assert(read != NULL);
+			kangoo_can_frame_print(read);
+
+			read = kangoo_fake_bms_can_frame_read(self);
+			assert(read != NULL);
+			kangoo_can_frame_print(read);
+
 			assert(kangoo_fake_bms_can_frame_read(self) == NULL);
 
 			kangoo_fake_bms_update(self, 0);
 		}
 
 		if ((i % 3000) == 0 && i != 0) {
-			assert(kangoo_fake_bms_can_frame_read(self) != NULL);
+			read = kangoo_fake_bms_can_frame_read(self);
+			assert(read != NULL);
+			kangoo_can_frame_print(read);
+
 			assert(kangoo_fake_bms_can_frame_read(self) == NULL);
-		
+
 			kangoo_fake_bms_update(self, 0);
 		}
 	}
@@ -97,7 +114,7 @@ void fake_bms_test()
 
 	/* Now test stop */
 	kangoo_fake_bms_stop(&fbms);
-		
+	
 	for (i = 0; i < 9000; i++) {
 		kangoo_fake_bms_update(&fbms, 1);
 
@@ -106,6 +123,38 @@ void fake_bms_test()
 
 	/* Test start again */
 	fake_bms_test_start(&fbms);
+}
+
+void can_filter_fake_bms_test()
+{
+	int i, j;
+	struct kangoo_can_filter_fake_bms fbms;
+	struct kangoo_can_frame frame;
+	struct kangoo_can_frame *read;
+
+	kangoo_can_filter_fake_bms_init(&fbms);
+
+	kangoo_can_filter_fake_bms_update(&fbms, 0);
+
+	frame.id = 0x423U;
+	frame.len = 1;
+	frame.data[0] = 0x07U;
+	kangoo_fake_bms_can_frame_write(&fbms.fbms, frame);
+
+	for (i = 0; i < 9000; i++) {
+		kangoo_can_filter_fake_bms_update(&fbms, 1);
+
+		for (j = 0; j < 10; j++) {
+			read = kangoo_fake_bms_can_frame_read(&fbms.fbms);
+			if (read) {
+				kangoo_can_frame_print(read);
+			}
+
+			/* Update immediately, so we can proccess other
+			 * messages. */
+			kangoo_can_filter_fake_bms_update(&fbms, 0);
+		}
+	}
 }
 
 int main()
@@ -117,6 +166,7 @@ int main()
 	button_test();
 
 	fake_bms_test();
+	can_filter_fake_bms_test();
 
 	return 0;
 }

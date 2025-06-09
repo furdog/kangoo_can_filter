@@ -32,17 +32,19 @@ struct kangoo_fake_bms {
  *****************************************************************************/
 void _kangoo_fake_bms_start_communication(struct kangoo_fake_bms *self)
 {
-	self->_msg_0_timer_ms = 0U;
-	self->_msg_1_timer_ms = 0U;
-	self->_msg_2_timer_ms = 0U;
+	if (self->_state != KANGOO_FAKE_BMS_STATE_SEND_MESSAGES) {
+		self->_msg_0_timer_ms = 0U;
+		self->_msg_1_timer_ms = 0U;
+		self->_msg_2_timer_ms = 0U;
 
-	self->_frames_available = 0U;
-	self->_input.len     = -1;
-	self->_frames[0].len = -1;
-	self->_frames[1].len = -1;
-	self->_frames[2].len = -1;
+		self->_frames_available = 0U;
+		self->_input.len     = -1;
+		self->_frames[0].len = -1;
+		self->_frames[1].len = -1;
+		self->_frames[2].len = -1;
 
-	self->_state = KANGOO_FAKE_BMS_STATE_SEND_MESSAGES;
+		self->_state = KANGOO_FAKE_BMS_STATE_SEND_MESSAGES;
+	}
 }
 
 void _kangoo_fake_bms_stop_communication(struct kangoo_fake_bms *self)
@@ -85,7 +87,7 @@ void _kangoo_parse_input_frames(struct kangoo_fake_bms *self)
 
 		if (frame->data[4] == 0x5DU) {
 			self->_lbc_key_answer = 0x55U;
-		} else if (frame->data[6] == 0xB2U) {
+		} else if (frame->data[4] == 0xB2U) {
 			self->_lbc_key_answer = 0xAAU;
 		} else {}
 
@@ -112,12 +114,6 @@ void _kangoo_fake_bms_send_messages(struct kangoo_fake_bms *self,
 	self->_msg_0_timer_ms += delta_time_ms;
 	self->_msg_1_timer_ms += delta_time_ms;
 	self->_msg_2_timer_ms += delta_time_ms;
-
-	/* Invalidate frames before send. */
-	self->_frames_available = 0U;
-	self->_frames[0].len = -1;
-	self->_frames[1].len = -1;
-	self->_frames[2].len = -1;
 
 	if (self->_msg_0_timer_ms >= 10U)
 	{

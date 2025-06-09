@@ -158,6 +158,8 @@ void kangoo_can_filter_init_esp32_twai(twai_handle_t *bus)
 		TWAI_GENERAL_CONFIG_DEFAULT(bus_tx, bus_rx, TWAI_MODE_NORMAL);
 	twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS  ();
 	twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
+	
+	/* g_config.tx_queue_len = 10; */
 
 	// Install driver for TWAI bus 0
 	g_config.controller_id = bus_id;
