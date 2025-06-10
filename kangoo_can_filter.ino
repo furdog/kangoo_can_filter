@@ -2,7 +2,7 @@
 #include "kangoo_can_filter.h"
 
 #define WEB_INTERFACE_ENABLED
-#define FAKE_BMS_ENABLED
+//#define FAKE_BMS_ENABLED
 //#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
 
@@ -64,6 +64,7 @@ static uint8_t diag_code = 0;
 static uint8_t diag_counter = 0;
 static bool    bms_charger_plugged_in = 0.0f;
 static bool    bms_ubercharge_active = false;
+static bool    fake_bms_enabled = false;
 
 #include "filesystem.h"
 #include "web_interface.h"
@@ -351,8 +352,13 @@ void setup()
 void loop()
 {
 	clock_t delta_time_ms = get_delta_time_ms();
+#ifdef FAKE_BMS_ENABLED
 	kangoo_can_filter_fake_bms_update(&fbms, delta_time_ms);
-	
+	if (!fake_bms_enabled) {
+		fbms._real_bms_last_seen_timeout_ms = 0;
+	}
+#endif
+
 	struct kangoo_can_frame frame;
 
 	//Update driver
@@ -361,7 +367,9 @@ void loop()
 	kangoo_can_filter_recv_frame(0, &frame);
 	if (frame.len > -1)
 	{
+#ifdef FAKE_BMS_ENABLED
 		kangoo_can_filter_current_bus = 0;
+#endif
 
 		can_filter(&frame);
 #ifdef FAKE_BMS_ENABLED
@@ -377,7 +385,9 @@ void loop()
 	kangoo_can_filter_recv_frame(1, &frame);
 	if (frame.len > -1)
 	{
+#ifdef FAKE_BMS_ENABLED
 		kangoo_can_filter_current_bus = 1;
+#endif
 
 		can_filter(&frame);
 #ifdef FAKE_BMS_ENABLED

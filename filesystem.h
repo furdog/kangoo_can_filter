@@ -19,6 +19,7 @@ struct settings {
 	float bms_limit_charge_kwt_manually;
 	bool  bms_kwt_counter_enabled;
 	float bms_kwt_counter;
+	bool  fake_bms_enabled;
 };
 
 void save_settings()
@@ -41,6 +42,7 @@ void save_settings()
 	settings.bms_limit_charge_kwt_manually         = bms_limit_charge_kwt_manually;
 	settings.bms_kwt_counter_enabled               = bms_kwt_counter_enabled;
 	settings.bms_kwt_counter                       = bms_kwt_counter;
+	settings.fake_bms_enabled                      = fake_bms_enabled;
 	
 	printf("saving...\n");
 	File f = LittleFS.open("/settings.bin", "w");
@@ -84,6 +86,7 @@ void load_settings()
 	bms_limit_charge_kwt_manually         = settings.bms_limit_charge_kwt_manually;
 	bms_kwt_counter_enabled               = settings.bms_kwt_counter_enabled;
 	bms_kwt_counter                       = settings.bms_kwt_counter;
+	fake_bms_enabled                      = settings.fake_bms_enabled;
 	
 	f.close();
 }

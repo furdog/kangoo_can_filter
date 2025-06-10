@@ -215,6 +215,16 @@ void ajax_query()
 		}
 		break;
 
+	case 18:	
+		if (web_server.args() > 1) {
+			fake_bms_enabled = web_server.arg((size_t)1).toInt();
+			commit_settings();
+			send_ok();
+		} else {
+			web_server.send(200, "text/plain", String("[") + (fake_bms_enabled ? 1 : 0) + "]");
+		}
+		break;
+
 	/** restart. */
 	case 17:
 		ESP.restart();
