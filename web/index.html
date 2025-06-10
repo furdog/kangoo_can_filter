@@ -659,7 +659,7 @@ function create_kwt_counter(parent)
 	
 	/** Enabler. */
 	const enabled = checkbox_create(pane.toolbar, true);
-	enabled.ajax.id = ID_BMS_FAKE_BMS_ENABLED;
+	enabled.ajax.id = ID_BMS_KWT_COUNTER_ENABLED;
 	enabled.style.padding = "0.1em";
 	enabled.on_check = function(state) {
 		pane.content.style.visibility = state ? "" : "hidden";
@@ -698,7 +698,7 @@ function create_fake_bms(parent)
 	
 	/** Enabler. */
 	const enabled = checkbox_create(pane.toolbar, true);
-	enabled.ajax.id = ID_BMS_KWT_COUNTER_ENABLED;
+	enabled.ajax.id = ID_BMS_FAKE_BMS_ENABLED;
 	enabled.style.padding = "0.1em";
 	enabled.on_check = function(state) {
 		pane.content.style.visibility = state ? "" : "hidden";

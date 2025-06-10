@@ -2,7 +2,7 @@
 #include "kangoo_can_filter.h"
 
 #define WEB_INTERFACE_ENABLED
-//#define FAKE_BMS_ENABLED
+#define FAKE_BMS_ENABLED
 //#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
 
@@ -354,6 +354,8 @@ void loop()
 	clock_t delta_time_ms = get_delta_time_ms();
 #ifdef FAKE_BMS_ENABLED
 	kangoo_can_filter_fake_bms_update(&fbms, delta_time_ms);
+
+	/* TODO better abstraction. (REFACTOR)*/
 	if (!fake_bms_enabled) {
 		fbms._real_bms_last_seen_timeout_ms = 0;
 	}
