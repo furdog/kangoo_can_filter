@@ -188,8 +188,15 @@ class ajax {
 			if (this.responseText.length <= 0)
 				return;
 
+			var args;
+
 			console.log("recv|    " + request);
-			var args = JSON.parse(this.responseText);
+			try {
+				args = JSON.parse(this.responseText);
+			} catch (e) {
+				args = [];
+			}
+
 			xhttp.sender.on_recv(args);
 		}
 

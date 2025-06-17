@@ -9,8 +9,8 @@ SERIAL_PORT=COM3
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
-TARGET=can_filter_v1_native_esp32
-#TARGET=can_filter_v2_native_esp32c6
+#TARGET=can_filter_v1_native_esp32
+TARGET=can_filter_v2_native_esp32c6
 
 #EXTRA_FLAGS="-v"
 

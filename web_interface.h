@@ -18,6 +18,30 @@ void send_ok()
 /************************************************
  * Web functions
  ***********************************************/
+
+/**
+ * @brief Converts a float value to a JSON-compatible string.
+ * Handles NaN (Not a Number) and Infinity by returning "null".
+ * Otherwise, converts the float to a string with a specified number of decimal places.
+ * * @param value The float value to convert.
+ * @param decimalPlaces The number of decimal places to include for valid float numbers.
+ * Defaults to 3.
+ * @return A String representing the float in JSON-compatible format ("null" for NaN/Infinity).
+ */
+String floatToJsonString(float value, int decimalPlaces = 3) {
+    if (isnan(value) || isinf(value)) {
+        return "null"; // JSON does not support NaN or Infinity directly. Use "null".
+    } else {
+        // dtostrf(float_value, min_width, num_decimal_places, char_array_buffer);
+        // min_width: Minimum width of the field (0 means no padding).
+        // num_decimal_places: Number of digits after the decimal point.
+        // char_array_buffer: Buffer to store the resulting string.
+        char buffer[32]; // Sufficiently large buffer for most float representations
+        dtostrf(value, 0, decimalPlaces, buffer);
+        return String(buffer);
+    }
+}
+
 void ajax_query()
 {
 	/** If no arguments then it means that page request is queried. */
@@ -36,16 +60,16 @@ void ajax_query()
 	/** Send status update if 0 requested. */
 	case 0: {
 		String text = String("[")
-		+ String(bms_soh, 3) + ","
-		+ String(bms_voltage, 3) + ","
-		+ String(bms_soc, 3) + ","
-		+ String(bms_current, 3) + ","
-		+ String(bms_temp, 3) + ","
-		+ String(bms_max_input_kwt, 3) + ","
-		+ String(bms_min_cell_v, 3) + ","
-		+ String(bms_max_cell_v, 3) + ","
-		+ String(bms_kwh, 3) + ","
-		+ String(bms_max_recu_kwt, 3) + ","
+		+ floatToJsonString(bms_soh, 3) + ","
+		+ floatToJsonString(bms_voltage, 3) + ","
+		+ floatToJsonString(bms_soc, 3) + ","
+		+ floatToJsonString(bms_current, 3) + ","
+		+ floatToJsonString(bms_temp, 3) + ","
+		+ floatToJsonString(bms_max_input_kwt, 3) + ","
+		+ floatToJsonString(bms_min_cell_v, 3) + ","
+		+ floatToJsonString(bms_max_cell_v, 3) + ","
+		+ floatToJsonString(bms_kwh, 3) + ","
+		+ floatToJsonString(bms_max_recu_kwt, 3) + ","
 		+ String(filesystem_is_corrupted())
 		+ "]";
 		web_server.send(200, "text/plain", text);
@@ -103,7 +127,7 @@ void ajax_query()
 			commit_settings();
 			send_ok();
 		} else {
-			web_server.send(200, "text/plain", String("[") + bms_recuperation_multiplier + "]");
+			web_server.send(200, "text/plain", String("[") + floatToJsonString(bms_recuperation_multiplier) + "]");
 		}
 		break;
 
@@ -125,7 +149,7 @@ void ajax_query()
 			commit_settings();
 			send_ok();
 		} else {
-			web_server.send(200, "text/plain", String("[") + bms_soh_multiplier + "]");
+			web_server.send(200, "text/plain", String("[") + floatToJsonString(bms_soh_multiplier) + "]");
 		}
 		break;
 		
@@ -147,7 +171,7 @@ void ajax_query()
 			commit_settings();
 			send_ok();
 		} else {
-			web_server.send(200, "text/plain", String("[") + bms_custom_capacity + "]");
+			web_server.send(200, "text/plain", String("[") + floatToJsonString(bms_custom_capacity) + "]");
 		}
 		break;
 
@@ -169,7 +193,7 @@ void ajax_query()
 			commit_settings();
 			send_ok();
 		} else {
-			web_server.send(200, "text/plain", String("[") + bms_ubercharge + "]");
+			web_server.send(200, "text/plain", String("[") + floatToJsonString(bms_ubercharge) + "]");
 		}
 		break;
 
@@ -190,7 +214,7 @@ void ajax_query()
 			commit_settings();
 			send_ok();
 		} else {
-			web_server.send(200, "text/plain", String("[") + bms_limit_charge_kwt_manually + "]");
+			web_server.send(200, "text/plain", String("[") + floatToJsonString(bms_limit_charge_kwt_manually) + "]");
 		}
 		break;
 	
@@ -211,7 +235,7 @@ void ajax_query()
 			commit_settings();
 			send_ok();
 		} else {
-			web_server.send(200, "text/plain", String("[") + bms_kwt_counter + "]");
+			web_server.send(200, "text/plain", String("[") + floatToJsonString(bms_kwt_counter) + "]");
 		}
 		break;
 
