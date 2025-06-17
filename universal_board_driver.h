@@ -49,7 +49,7 @@ clock_t get_delta_time_ms()
  * KANGOO_CAN_FILTER_INIT_ADAFRUIT_MCP2515
  *****************************************************************************/
 #ifdef CAN_FILTER_V1_NATIVE_ESP32
-
+#ifdef CAN_FILTER_CAN_ADAFRUIT
 /* USE Adafruit CAN implementation */
 #include <Adafruit_MCP2515.h>
 
@@ -64,7 +64,7 @@ clock_t get_delta_time_ms()
 
 Adafruit_MCP2515 mcp(CAN1_CS, CAN1_MOSI, CAN1_MISO, CAN1_SCK);
 
-void kangoo_can_filter_init_adafruit_mcp2515()
+void kangoo_can_filter_init_mcp2515()
 {
 	if (!mcp.begin(CAN1_DESIRED_BIT_RATE)) {
 		printf("Adafruit_MCP2515 init failed!\n");
@@ -75,7 +75,7 @@ void kangoo_can_filter_init_adafruit_mcp2515()
 }
 
 /* TODO proper bound checking */
-void kangoo_can_filter_adafruit_mcp2515_send(
+void kangoo_can_filter_mcp2515_send(
 					 struct kangoo_can_frame *frame)
 {
 	int8_t i = 0;
@@ -92,7 +92,7 @@ void kangoo_can_filter_adafruit_mcp2515_send(
 }
 
 /* TODO proper bound checking */
-void kangoo_can_filter_adafruit_mcp2515_recv(
+void kangoo_can_filter_mcp2515_recv(
 					 struct kangoo_can_frame *frame)
 {
 	int8_t i = 0;
@@ -111,8 +111,76 @@ void kangoo_can_filter_adafruit_mcp2515_recv(
 		frame->len = -1;
 	}
 }
+#endif /* CAN_FILTER_CAN_ADAFRUIT */
+
+#ifdef CAN_FILTER_CAN_ACAN
+#include <ACAN2515.h>
+
+#define CAN1_SCK   18
+#define CAN1_MOSI  23
+#define CAN1_MISO  19
+#define CAN1_CS    17 
+#define CAN1_INT   -1
+#define CAN1_RESET -1
+#define CAN1_DESIRED_BIT_RATE 1000UL * 500UL // 500 Kb/s
+#define CAN1_QUARTZ_FREQUENCY 16UL * 1000UL * 1000UL // 8 MHz
+ACAN2515 can1 (CAN1_CS, SPI, CAN1_INT);
+
+void kangoo_can_filter_init_mcp2515()
+{
+	uint16_t error_code;
+
+	/** ESP32 MCP2515 Shield CAN. */
+	SPI.begin(CAN1_SCK, CAN1_MISO, CAN1_MOSI);
+	ACAN2515Settings settings1(CAN1_QUARTZ_FREQUENCY, CAN1_DESIRED_BIT_RATE);
+	error_code = can1.begin(settings1, NULL);
+
+	if (!error_code) {
+		Serial.println ("CAN1 OK") ;
+	} else {
+		Serial.print ("ERROR CAN1: 0x") ;
+		Serial.println (error_code, HEX) ;
+	}
+}
+
+/* TODO proper bound checking */
+void kangoo_can_filter_mcp2515_send(struct kangoo_can_frame *frame)
+{
+	int i;
+	CANMessage acan_frame;
+	
+	acan_frame.len = frame->len;
+	acan_frame.id  = frame->id;
+
+	for (i = 0; i < acan_frame.len; i++) {
+		acan_frame.data[i] = frame->data[i];
+	}
+	
+	can1.tryToSend(acan_frame);
+}
+
+void kangoo_can_filter_mcp2515_recv(struct kangoo_can_frame *frame)
+{
+	int i;
+	CANMessage acan_frame;
+
+	can1.poll();
+
+	if (can1.receive(acan_frame) && acan_frame.len <= 8) {
+		frame->len = acan_frame.len;
+		frame->id  = acan_frame.id;
+
+		for (i = 0; i < acan_frame.len; i++) {
+			frame->data[i] = acan_frame.data[i];
+		}
+	} else {
+		frame->len = -1;
+	}
+}
 
 #endif
+
+#endif /* CAN_FILTER_V1_NATIVE_ESP32 */
 
 /******************************************************************************
  * KANGOO_CAN_FILTER_INIT_ESP32_TWAI
@@ -386,7 +454,7 @@ void kangoo_can_filter_dri_init()
 #ifndef CAN_FILTER_V1_NATIVE_ESP32
 	kangoo_can_filter_init_esp32_twai(&twai_bus_1);
 #else
-	kangoo_can_filter_init_adafruit_mcp2515();
+	kangoo_can_filter_init_mcp2515();
 #endif
 }
 
@@ -449,7 +517,7 @@ void kangoo_can_filter_send_frame(uint8_t bus_id,
 #ifndef CAN_FILTER_V1_NATIVE_ESP32
 		kangoo_can_filter_esp32_twai_send(&twai_bus_1, frame);
 #else
-		kangoo_can_filter_adafruit_mcp2515_send(frame);
+		kangoo_can_filter_mcp2515_send(frame);
 #endif
 	} else {
 		frame->len = -1;
@@ -465,7 +533,7 @@ void kangoo_can_filter_recv_frame(uint8_t bus_id,
 #ifndef CAN_FILTER_V1_NATIVE_ESP32
 		kangoo_can_filter_esp32_twai_recv(&twai_bus_1, frame);
 #else
-		kangoo_can_filter_adafruit_mcp2515_recv(frame);
+		kangoo_can_filter_mcp2515_recv(frame);
 #endif
 	} else {
 		frame->len = -1;

@@ -9,7 +9,11 @@ SERIAL_PORT=COM3
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
+# Targets:
 export TARGET=can_filter_v1_native_esp32
+#export CANLIB_VARIANT=CAN_FILTER_CAN_ADAFRUIT
+export CANLIB_VARIANT=CAN_FILTER_CAN_ACAN
+
 #export  TARGET=can_filter_v2_native_esp32c6
 
 #EXTRA_FLAGS="-v"
@@ -28,6 +32,7 @@ if [ "$TARGET" == "can_filter_v1_native_esp32" ]; then
 	       --build-property upload.maximum_size=1638400'
 	echo "$BOARD"
 	echo "#define CAN_FILTER_V1_NATIVE_ESP32" > target.gen.h
+	echo "#define" "$CANLIB_VARIANT" >> target.gen.h
 elif [ "$TARGET" == "can_filter_v2_native_esp32c6" ]; then
 	BOARD=esp32:esp32:esp32c6
 	FQBN=:CDCOnBoot=cdc
