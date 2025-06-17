@@ -9,8 +9,8 @@ SERIAL_PORT=COM3
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
-#TARGET=can_filter_v1_native_esp32
-TARGET=can_filter_v2_native_esp32c6
+export TARGET=can_filter_v1_native_esp32
+#export  TARGET=can_filter_v2_native_esp32c6
 
 #EXTRA_FLAGS="-v"
 
@@ -44,6 +44,19 @@ if [ -z "${GIT_REPO_VERSION+x}" ]; then
 	export GIT_REPO_VERSION=$(git describe --tags)
 fi
 
+mk_base64_updater()
+{
+	local BOARD_PATH="${BOARD//:/\.}"  # Replace ':' with '.'
+	local FILE="build/${BOARD_PATH}/$(basename "$PWD").ino.bin"
+
+	# Generate BASE64 firmware
+	export BASE64_ENCODED_FIRMWARE=$(base64 -w 0 "$FILE")
+
+	# Generate updater html file (with embedded base64 firmware)
+	awk/ENV.awk web/kangoo_can_filter_updater.html > \
+		     build/"$BOARD_PATH"/"$TARGET"_"$GIT_REPO_VERSION".html
+}
+
 compile() {
 	# Setup tools and libraries
 	./setup.sh
@@ -66,9 +79,12 @@ compile() {
 	while ! ${COMPILER} compile -b ${BOARD}${FQBN} --warnings "all" \
 			   ${PROPS} -e --libraries "libraries/" \
 			   ${EXTRA_FLAGS}; do
+
 		read -p "Press any key to continue "
 		exit
 	done
+
+	mk_base64_updater # Make base64 firmware
 }
 
 # Function to monitor
@@ -111,7 +127,11 @@ web_upload() {
 }
 
 # Check if the argument is "monitor"
-if [ "$1" == "monitor" ]; then
+if [ "$1" == "compile" ]; then
+	compile
+elif [ "$1" == "build" ]; then
+	compile
+elif [ "$1" == "monitor" ]; then
 	monitor
 elif [ "$1" == "upload" ]; then
 	upload

@@ -12,6 +12,7 @@ WebServer web_server(80);
  ***********************************************/
 void send_ok()
 {
+	web_server.sendHeader("Access-Control-Allow-Origin", "*");
 	web_server.send(200);
 }
 
@@ -293,7 +294,7 @@ void download_firmware()
 	if (upload.status == UPLOAD_FILE_START) {
 		if (Update.begin(free_space)) {
 			Serial.println("Update begin success");
-		} {
+		} else {
 			Serial.println("Update begin fail");
 		}
 	} else if (upload.status == UPLOAD_FILE_WRITE) {
@@ -302,7 +303,7 @@ void download_firmware()
 	} else if(upload.status == UPLOAD_FILE_END) {
 		if (Update.end(true)) {
 			Serial.println("Update end success");
-			send_ok();
+			//send_ok();
 			rapid_blink = true;
 			restart_ticker.once(1.0, safe_restart);
 		} else {
