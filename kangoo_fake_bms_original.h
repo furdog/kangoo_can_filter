@@ -1,10 +1,6 @@
 #ifndef KANGOO_FAKE_BMS_GUARD
 #define KANGOO_FAKE_BMS_GUARD
 
-/* Kangoo has 2 bms, this code only emulates second bms messages
- * see kango_fake_bms_original.h for both bms messages
- * WARNING: needs heavy refactoring, so both bms can be emulated separately */
-
 enum kangoo_fake_bms_state
 {
 	KANGOO_FAKE_BMS_STATE_NONE,
@@ -115,23 +111,76 @@ void _kangoo_parse_input_frames(struct kangoo_fake_bms *self)
 void _kangoo_fake_bms_send_messages(struct kangoo_fake_bms *self,
 				   uint32_t delta_time_ms)
 {
+	self->_msg_0_timer_ms += delta_time_ms;
 	self->_msg_1_timer_ms += delta_time_ms;
+	self->_msg_2_timer_ms += delta_time_ms;
 
-	if (self->_msg_1_timer_ms >= 100U) {
-		self->_msg_1_timer_ms = 0U;
-		
-		self->_frames[0].id      = 0x445U;
-		self->_frames[0].len     = 7U;
-		self->_frames[0].data[0] = 0x40U; /* ready to start? 0x80-0x40*/
-		self->_frames[0].data[1] = 0x55U; /* ??? */
-		self->_frames[0].data[2] = self->_lbc2_key_answer;/* heartbeat */
-		self->_frames[0].data[3] = 0x85U; /* max batt temp -40c */
-		self->_frames[0].data[4] = 0x25U; /* hi cell V x0.01 + 1v */
-		self->_frames[0].data[5] = 0x91U; /* lo cell V x0.01 + 1v */
-		self->_frames[0].data[6] = 0x80U; /* ??? */
+	if (self->_msg_0_timer_ms >= 10U)
+	{
+		self->_msg_0_timer_ms = 0U;
+
+		self->_frames[0].id      = 0x155U;
+		self->_frames[0].len     = 8U;
+		/* can_frame_1.data[0] = 0x85; */
+		self->_frames[0].data[0] = 0x00U; /* charging power */
+		self->_frames[0].data[1] = 0x87U; /* ???            */
+		self->_frames[0].data[2] = 0xD0U; /* current + 400  */
+		self->_frames[0].data[3] = 0x54U; /*                */
+		self->_frames[0].data[4] = 0x50U; /* soc + 400      */
+		self->_frames[0].data[5] = 0x00U; /*                */
+		self->_frames[0].data[6] = 0x02U; /* voltage * 2    */
+		self->_frames[0].data[7] = 0xBCU; /*                */
 
 		self->_frames_available = 1U;
-	}
+	} else if (self->_msg_1_timer_ms >= 100U) {
+		self->_msg_1_timer_ms = 0U;
+
+		self->_frames[0].id      = 0x424U;
+		self->_frames[0].len     = 8U;
+		self->_frames[0].data[0] = 0x12U; /* ? */
+		self->_frames[0].data[1] = 0x40U; 
+		self->_frames[0].data[2] = 0x23U; /* max input power * 2  */
+		self->_frames[0].data[3] = 0xAFU; /* max output power * 2 */
+		self->_frames[0].data[4] = 0x28U; /* batt temp - 40c      */
+		self->_frames[0].data[5] = 0x50U; /* batt health 0-100    */
+		self->_frames[0].data[6] = self->_lbc_key_answer; /* heartbeat */
+		self->_frames[0].data[7] = 0x43U; /* max batt temp - 40	*/
+		
+		self->_frames[1].id      = 0x425U;
+		self->_frames[1].len     = 8U;
+		self->_frames[1].data[0] = 0x2AU; /* (OT ? 0x2A : 0x24); ? */
+		self->_frames[1].data[1] = 0x44U; /* available kwh * 10 */
+		self->_frames[1].data[2] = 0x44U; /* ? */
+		self->_frames[1].data[3] = 0x9CU; /* hv iso resist ohm / 100 */
+		self->_frames[1].data[4] = 0x42U; /*                         */
+		self->_frames[1].data[5] = 0x4AU; /* highest cell V x100 - 1 */
+		self->_frames[1].data[6] = 0x01U; /* Lowest cell V x100 - 1  */
+		self->_frames[1].data[7] = 0x24U; /*                         */	
+		
+		self->_frames[2].id      = 0x445U;
+		self->_frames[2].len     = 7U;
+		self->_frames[2].data[0] = 0x40U; /* ready to start? 0x80-0x40*/
+		self->_frames[2].data[1] = 0x55U; /* ??? */
+		self->_frames[2].data[2] = self->_lbc2_key_answer;/* heartbeat */
+		self->_frames[2].data[3] = 0x85U; /* max batt temp -40c */
+		self->_frames[2].data[4] = 0x25U; /* hi cell V x0.01 + 1v */
+		self->_frames[2].data[5] = 0x91U; /* lo cell V x0.01 + 1v */
+		self->_frames[2].data[6] = 0x80U; /* ??? */
+
+		self->_frames_available = 3U;
+
+	} else if (self->_msg_2_timer_ms >= 3000U) {
+		self->_msg_2_timer_ms = 0U;
+
+		self->_frames[0].id      = 0x659U;
+		self->_frames[0].len     = 4U;
+		self->_frames[0].data[0] = 0x0U;
+		self->_frames[0].data[1] = 0x0U;
+		self->_frames[0].data[2] = 0x0U;
+		self->_frames[0].data[3] = 0x0U;
+		
+		self->_frames_available = 1U;
+	} else {}
 }
 
 /******************************************************************************

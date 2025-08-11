@@ -1,10 +1,11 @@
 //#include "native_board_driver.h"
-#include "kangoo_can_filter.h"
-
 #define WEB_INTERFACE_ENABLED
 #define FAKE_BMS_ENABLED
+#define KANGOO_FAKE_BMS2 /* Fake only second BMS*/
 //#define USE_NATIVE_CAN
 //#define USE_DUAL_MCP
+
+#include "kangoo_can_filter.h"
 
 //Початкові налаштування системи (Не працюють коли веб інтерфейс увімкнений)
 #define BMS_FILTERING_ENABLED                 true
@@ -203,7 +204,9 @@ void can_filter(struct kangoo_can_frame *frame)
 	switch (frame->id) {
 	case 0x155:
 #ifdef FAKE_BMS_ENABLED
+	#ifndef KANGOO_FAKE_BMS2
 		kangoo_can_filter_fake_bms_report_real_bms_message_triggered(&fbms);
+	#endif
 		kangoo_can_filter_fake_bms_bus = kangoo_can_filter_current_bus;
 #endif
 
@@ -306,7 +309,14 @@ void can_filter(struct kangoo_can_frame *frame)
 
   		bms_charger_plugged_in = (frame->data[6] > 0x00) ? true : false;
 		break;
-  
+
+#ifdef KANGOO_FAKE_BMS2
+	case 0x445:
+		/* Second bms (TESTING) */
+		kangoo_can_filter_fake_bms_report_real_bms_message_triggered(&fbms);
+		break;
+#endif
+
 	case 0x659:
 		/** Break if no filtering allowed. */
 		if (!bms_filtering_enabled)

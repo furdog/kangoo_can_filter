@@ -7,7 +7,12 @@
 #include <assert.h>
 
 #include "kangoo_can_frame.h"
+
+#ifdef KANGOO_FAKE_BMS2
 #include "kangoo_fake_bms.h"
+#else
+#include "kangoo_fake_bms_original.h"
+#endif
 
 /******************************************************************************
  * CAN TOOLS
