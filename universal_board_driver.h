@@ -190,11 +190,12 @@ void kangoo_can_filter_mcp2515_recv(struct kangoo_can_frame *frame)
 #include "driver/twai.h"
 
 #ifndef CAN_FILTER_V1_NATIVE_ESP32 /* ESP32C6 */
-#define TWAI_BUS_0_TX GPIO_NUM_19
-#define TWAI_BUS_0_RX GPIO_NUM_20
+#warning ESP32C6 is used!
+#define TWAI_BUS_0_TX GPIO_NUM_13
+#define TWAI_BUS_0_RX GPIO_NUM_12
 
-#define TWAI_BUS_1_TX GPIO_NUM_22
-#define TWAI_BUS_1_RX GPIO_NUM_21
+#define TWAI_BUS_1_TX GPIO_NUM_14
+#define TWAI_BUS_1_RX GPIO_NUM_15
 #else /* ADAFRUIT */
 #define TWAI_BUS_0_TX GPIO_NUM_4
 #define TWAI_BUS_0_RX GPIO_NUM_16
@@ -332,11 +333,13 @@ void kangoo_can_filter_esp32_twai_recv(twai_handle_t *bus,
 #ifndef CAN_FILTER_V1_NATIVE_ESP32
 
 #include <Adafruit_NeoPixel.h>
+#include "dev_timeout_led_indicator.h"
 
 #define PIN_WS2812B 8
 #define NUM_PIXELS 1
 
-Adafruit_NeoPixel ws2812b(NUM_PIXELS, PIN_WS2812B, NEO_RGB + NEO_KHZ800);
+struct dev_timeout_led_indicator led_indicator;
+Adafruit_NeoPixel ws2812b(NUM_PIXELS, PIN_WS2812B, NEO_GRB + NEO_KHZ800);
 
 #endif
 
@@ -355,6 +358,9 @@ void kangoo_can_filter_init_other()
 	button_init(&bms_recuperation_button_minus);
 	button_init(&bms_recuperation_button_plus);
 #else
+	dev_timeout_led_indicator_init(&led_indicator);
+	dev_timeout_led_indicator_set_count(&led_indicator, 2);
+
 	ws2812b.begin();  // initialize WS2812B strip object (REQUIRED)
 #endif
 }
@@ -394,9 +400,9 @@ void kangoo_can_filter_update_other(uint32_t delta_time_ms)
 		digitalWrite(LED2_PIN, led2_state);
 		led2_state = !led2_state;
 #else
-		led_state = !led_state;
+		/* led_state = !led_state;
 		led2_state = !led2_state;
-		kangoo_can_filter_led_update();
+		kangoo_can_filter_led_update(); */
 #endif
 
 		timestamp += 5000;
@@ -426,6 +432,12 @@ void kangoo_can_filter_update_other(uint32_t delta_time_ms)
 #ifdef CAN_FILTER_V1_NATIVE_ESP32
 	bms_recuperation_button_minus.pressed = !digitalRead(RECUPERATION_BUTTON_MINUS);
 	bms_recuperation_button_plus.pressed  = !digitalRead(RECUPERATION_BUTTON_PLUS);
+#else
+	if (dev_timeout_led_indicator_update(&led_indicator, delta_time_ms)) {
+		ws2812b.setPixelColor(0, led_indicator.c.r, led_indicator.c.g,
+					 led_indicator.c.b);
+		ws2812b.show();
+	}
 #endif
 }
 
@@ -538,4 +550,19 @@ void kangoo_can_filter_recv_frame(uint8_t bus_id,
 	} else {
 		frame->len = -1;
 	}
+
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
+	if (frame->len > -1) {
+		dev_timeout_led_indicator_update_timer(
+						 &led_indicator, bus_id, 5000);
+	}
+#else
+	if (bus_id == 0) {
+		led_state = !led_state;
+		kangoo_can_filter_led_update();
+	} else if (bus_id == 1) {
+		led2_state = !led2_state;
+		kangoo_can_filter_led_update();
+	}
+#endif
 }

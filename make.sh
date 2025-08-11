@@ -65,10 +65,10 @@ mk_base64_updater()
 compile() {
 	# Setup tools and libraries
 	./setup.sh
-	if [[ $? -ne 0 ]]; then
-	    echo "FATAL ERROR: Setup failed."
-	    exit 1
-	fi
+	#if [[ $? -ne 0 ]]; then
+	#    echo "FATAL ERROR: Setup failed."
+	#    exit 1
+	#fi
 
 	# Replace environment variables inside web page
 	awk/ENV.awk web/index.html > index.gen.html

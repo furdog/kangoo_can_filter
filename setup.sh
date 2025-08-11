@@ -41,3 +41,18 @@ if [[ ! -d "libraries/" ]]; then
 
 	cd ..
 fi
+
+#SETUP Clone git libraries
+mkdir -p libraries
+cd libraries
+
+echo "Cloning git libraries..."
+
+REPO_URL="https://github.com/adafruit/Adafruit_NeoPixel.git"
+DEST_DIR="$(basename "$REPO_URL" .git)"
+echo "$REPO_URL"
+if [ -d "$DEST_DIR" ]; then
+	(cd "$DEST_DIR" && git pull)
+else
+	(git clone "$REPO_URL")
+fi

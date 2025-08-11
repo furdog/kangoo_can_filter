@@ -380,8 +380,6 @@ void loop()
 		kangoo_can_filter_send_frame(1, &frame);
 
 		//digitalWrite(LED_PIN, led_state);
-		led_state = !led_state;
-		kangoo_can_filter_led_update();
 	}
 
 	kangoo_can_filter_recv_frame(1, &frame);
@@ -398,8 +396,6 @@ void loop()
 		kangoo_can_filter_send_frame(0, &frame);
 		
 		//digitalWrite(LED2_PIN, led2_state);
-		led2_state = !led2_state;
-		kangoo_can_filter_led_update();
 	}
 
 #ifdef FAKE_BMS_ENABLED
