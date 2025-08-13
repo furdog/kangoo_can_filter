@@ -9,5 +9,11 @@ python ../misra/misra.py ../kangoo_can_filter.h.dump --rule-texts=../misra/misra
 cppcheck --dump --std=c89 ../kangoo_fake_bms.h
 python ../misra/misra.py ../kangoo_fake_bms.h.dump --rule-texts=../misra/misra_c_2023__headlines_for_cppcheck.txt
 
-gcc -I.. kangoo_can_filter.test.c -Wall -Wextra -g -std=c89 -pedantic
+cppcheck --dump --std=c89 ../kangoo_data_extractor.h
+python ../misra/misra.py ../kangoo_data_extractor.h.dump --rule-texts=../misra/misra_c_2023__headlines_for_cppcheck.txt
+
+#gcc -I.. kangoo_can_filter.test.c -Wall -Wextra -g -std=c89 -pedantic
+#./a
+
+gcc -I.. data_extract.test.c -Wall -Wextra -g -std=c89 -pedantic
 ./a
