@@ -5,16 +5,16 @@
 ###############################################################################
 COMPILER=./tools/arduino-cli
 
-SERIAL_PORT=COM3
+SERIAL_PORT=COM15
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
 # Targets:
-export TARGET=can_filter_v1_native_esp32
+#export TARGET=can_filter_v1_native_esp32
 #export CANLIB_VARIANT=CAN_FILTER_CAN_ADAFRUIT
-export CANLIB_VARIANT=CAN_FILTER_CAN_ACAN
+#export CANLIB_VARIANT=CAN_FILTER_CAN_ACAN
 
-#export  TARGET=can_filter_v2_native_esp32c6
+export  TARGET=can_filter_v2_native_esp32c6
 
 #EXTRA_FLAGS="-v"
 

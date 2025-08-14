@@ -104,17 +104,20 @@ void _kangoo_parse_input_frames(struct kangoo_fake_bms *self)
 			self->_lbc_key_answer = 0xAAU;
 		} else {}
 
-		if (frame->data[6] == 0x5DU) {
+		/*if (frame->data[6] == 0x5DU) {
 			self->_lbc2_key_answer = 0x55U;
 		} else if (frame->data[6] == 0xB2U) {
 			self->_lbc2_key_answer = 0xAAU;
-		} else {}
+		} else {}*/
 
 		break;
 
 	case 0x424U:
 		self->_max_batt_temp_C =
 				  kangoo_x424_get_max_batt_temp_C(frame->data);
+
+		/* Now in sync with lbc1 key  */
+		self->_lbc2_key_answer = frame->data[6];
 		break;
 
 	case 0x425U:
