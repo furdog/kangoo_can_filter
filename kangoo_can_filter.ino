@@ -169,6 +169,7 @@ struct kangoo_can_filter_fake_bms fbms;
 /* send any fake bms frame */
 void kangoo_fake_bms_recv_frame(struct kangoo_can_frame *frame)
 {
+#ifndef KANGOO_FAKE_BMS2
 	int8_t ecu_bus = -1;
 
 	if (kangoo_can_filter_fake_bms_bus > -1) {
@@ -179,6 +180,10 @@ void kangoo_fake_bms_recv_frame(struct kangoo_can_frame *frame)
 	{
 		kangoo_fake_bms_can_frame_write(&fbms.fbms, *frame);
 	}
+#else
+	/* Accept all frames for fbms2*/
+	kangoo_fake_bms_can_frame_write(&fbms.fbms, *frame);
+#endif
 }
 
 /* send any fake bms frame if available */
