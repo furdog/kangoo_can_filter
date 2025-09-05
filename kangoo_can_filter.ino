@@ -284,8 +284,10 @@ void can_filter(struct kangoo_can_frame *frame)
 		/** Custom kwt counter */
 		bms_kwt_counter_elapsed = millis() - bms_kwt_counter_elapsed;
 
-		if (bms_kwt_counter_enabled) {
-			
+		/* Do not count in unrealistic scenarios */
+		if (bms_kwt_counter_enabled &&
+		    (bms_kwt_counter_elapsed <= 200) && bms_voltage <= 420 &&
+		    (bms_current <= 150 && bms_current >= -150)) {
 			double per_hour = ((double)bms_kwt_counter_elapsed / (1000 * 60 * 60));
 			/* printf("%lu\n", elapsed); */
 
