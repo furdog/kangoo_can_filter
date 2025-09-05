@@ -11,6 +11,9 @@ temperature_sensor_handle_t temp_handle = NULL;
 DNSServer dns_server;
 WebServer web_server(80);
 
+#define WEB_MAX_IDLE_TIME 120000 /* 2min */
+static uint32_t webIdleTime = 0;
+
 /************************************************
  *  Full web page
  ***********************************************/
@@ -64,6 +67,8 @@ void ajax_query()
 	switch (web_server.arg(0).toInt()) {
 	/** Send status update if 0 requested. */
 	case 0: {
+		webIdleTime = millis(); /* Reset web idle timer */
+
 		// Enable temperature sensor
 		ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
 		// Get converted sensor data
@@ -353,4 +358,11 @@ void web_interface_update()
 {
 	dns_server.processNextRequest();
 	web_server.handleClient();
+
+	/* If idle for too long. */
+	if (((millis() - webIdleTime) >= WEB_MAX_IDLE_TIME) &&
+	    WiFi.getMode() != WIFI_OFF) {
+		WiFi.disconnect(true);
+		WiFi.mode(WIFI_OFF);
+	}
 }
