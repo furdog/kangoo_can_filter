@@ -14,7 +14,7 @@ void filesystem_task(void *pv_parameters)
 
 	while(1) {
 		filesystem_update();
-		vTaskDelay(10000);
+		vTaskDelay(30000); /* Update settings every 30 seconds */
 	}
 }
 

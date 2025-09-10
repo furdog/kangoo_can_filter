@@ -296,6 +296,9 @@ void can_filter(struct kangoo_can_frame *frame)
 				bms_kwt_counter = 0;
 						
 			bms_kwh = bms_kwt_counter;
+
+			/* Commit setting, since counter changed */
+			commit_settings();
 		}
 		
 		bms_kwt_counter_elapsed = millis();
