@@ -35,7 +35,8 @@ if [ "$TARGET" == "can_filter_v1_native_esp32" ]; then
 	echo "#define" "$CANLIB_VARIANT" >> target.gen.h
 elif [ "$TARGET" == "can_filter_v2_native_esp32c6" ]; then
 	BOARD=esp32:esp32:esp32c6
-	FQBN=:CDCOnBoot=cdc
+	#FQBN=:CDCOnBoot=cdc
+	FQBN= #Disabled temporaryly due to serial port conflict
 else
 	echo "Bad target!"
 	exit 1
