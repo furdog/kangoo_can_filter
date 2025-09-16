@@ -305,12 +305,26 @@ void can_filter(struct kangoo_can_frame *frame)
 			
 		break;
 
-	case 0x426:
+	case 0x426: {
+		bool ignition_key = ((frame->data[1] & 0x60) > 0);
 		/** Try wifi reset sequence based on ignition key message. */
-		bms_wifi_reset_sequence(frame->data[1] & 0x60);
-		
+		bms_wifi_reset_sequence(ignition_key);
+
+		/** Disable fbms when ignition is off.
+		 * This prevents fbms from holding CAN line which causes
+		 * 12v battery drainage over time */
+
+#ifdef FAKE_BMS_ENABLED
+		if (ignition_key) {
+			kangoo_can_filter_fake_bms_force_wake(&fbms);
+		} else {
+			kangoo_can_filter_fake_bms_force_sleep(&fbms);
+		}
+#endif
+
 		break;
-	
+	}
+
 	case 0x428:
 #ifdef FAKE_BMS_ENABLED
 		kangoo_can_filter_fake_bms_bus =

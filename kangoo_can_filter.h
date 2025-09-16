@@ -290,6 +290,7 @@ struct kangoo_can_filter_fake_bms {
 	uint8_t _state;
 
 	uint32_t _real_bms_last_seen_timeout_ms;
+	bool _force_sleep; /* can filter will be forced to sleep */
 };
 
 void kangoo_can_filter_fake_bms_init(struct kangoo_can_filter_fake_bms *self)
@@ -299,6 +300,7 @@ void kangoo_can_filter_fake_bms_init(struct kangoo_can_filter_fake_bms *self)
 	self->_state = 0U;
 
 	self->_real_bms_last_seen_timeout_ms = 0U;
+	self->_force_sleep = false;
 }
 
 void kangoo_can_filter_fake_bms_report_real_bms_message_triggered(
@@ -306,6 +308,18 @@ void kangoo_can_filter_fake_bms_report_real_bms_message_triggered(
 {
 	/* Reset timer (prevents fake bms start due to timeout) */
 	self->_real_bms_last_seen_timeout_ms = 0U;
+}
+
+void kangoo_can_filter_fake_bms_force_sleep(
+			struct kangoo_can_filter_fake_bms *self)
+{
+	self->_force_sleep = true;
+}
+
+void kangoo_can_filter_fake_bms_force_wake(
+			struct kangoo_can_filter_fake_bms *self)
+{
+	self->_force_sleep = false;
 }
 
 void kangoo_can_filter_fake_bms_update(
@@ -316,6 +330,11 @@ void kangoo_can_filter_fake_bms_update(
 
 	switch (self->_state) {
 	case 0U: /* Check bms presence (increment timer until timeout) */
+		/* We don't do anything during force sleep */
+		if (self->_force_sleep) {
+			break;
+		}
+
 		if (self->_real_bms_last_seen_timeout_ms >=
 		    KANGOO_CAN_FILTER_FAKE_BMS_START_TIME_MS) {
 			kangoo_fake_bms_start(&self->fbms);
@@ -327,7 +346,8 @@ void kangoo_can_filter_fake_bms_update(
 		break;
 	
 	case 1U:
-		if (self->_real_bms_last_seen_timeout_ms == 0U) {
+		if (self->_real_bms_last_seen_timeout_ms == 0U ||
+		    self->_force_sleep) {
 			kangoo_fake_bms_stop(&self->fbms);
 			self->_state = 0U;
 		}
