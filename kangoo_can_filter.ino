@@ -313,7 +313,8 @@ void can_filter(struct kangoo_can_frame *frame)
 		/** Disable fbms when ignition is off.
 		 * This prevents fbms from holding CAN line which causes
 		 * 12v battery drainage over time */
-
+		/* TODO, prevent sleep when charger is plugged,
+		 * May cause errors otherwise */
 #ifdef FAKE_BMS_ENABLED
 		if (ignition_key) {
 			kangoo_can_filter_fake_bms_force_wake(&fbms);
