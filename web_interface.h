@@ -5,8 +5,8 @@
 #include "index.gen.h"
 
 /* TEST temp sensor */
-#include "driver/temperature_sensor.h"
-temperature_sensor_handle_t temp_handle = NULL;
+//#include "driver/temperature_sensor.h"
+//temperature_sensor_handle_t temp_handle = NULL;
 
 DNSServer dns_server;
 WebServer web_server(80);
@@ -69,6 +69,7 @@ void ajax_query()
 	case 0: {
 		webIdleTime = millis(); /* Reset web idle timer */
 
+		/*
 		// Enable temperature sensor
 		ESP_ERROR_CHECK(temperature_sensor_enable(temp_handle));
 		// Get converted sensor data
@@ -77,14 +78,15 @@ void ajax_query()
 		//printf("Temperature in %f °C\n", tsens_out);
 		// Disable the temperature sensor if it is not needed and save the power
 		ESP_ERROR_CHECK(temperature_sensor_disable(temp_handle));
+		*/
 
 		String text = String("[")
 		+ floatToJsonString(bms_soh, 3) + ","
 		+ floatToJsonString(bms_voltage, 3) + ","
 		+ floatToJsonString(bms_soc, 3) + ","
 		+ floatToJsonString(bms_current, 3) + ","
-		//+ floatToJsonString(bms_temp, 3) + ","
-		+ floatToJsonString(tsens_out, 3) + ","
+		+ floatToJsonString(bms_temp, 3) + ","
+		//+ floatToJsonString(tsens_out, 3) + ","
 		+ floatToJsonString(bms_max_input_kwt, 3) + ","
 		+ floatToJsonString(bms_min_cell_v, 3) + ","
 		+ floatToJsonString(bms_max_cell_v, 3) + ","
@@ -336,8 +338,8 @@ void download_firmware()
  ***********************************************/
 void web_interface_init()
 {
-	temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 100);
-	ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor_config, &temp_handle));
+	//temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 100);
+	//ESP_ERROR_CHECK(temperature_sensor_install(&temp_sensor_config, &temp_handle));
 
 	//WiFi.mode(WIFI_AP_STA);
 	WiFi.mode(WIFI_AP);
