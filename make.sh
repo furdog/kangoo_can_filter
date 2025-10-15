@@ -5,7 +5,7 @@
 ###############################################################################
 COMPILER=./tools/arduino-cli
 
-SERIAL_PORT=COM15
+SERIAL_PORT=COM22
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
@@ -14,7 +14,9 @@ OTA_IP="7.7.7.7"
 #export CANLIB_VARIANT=CAN_FILTER_CAN_ADAFRUIT
 #export CANLIB_VARIANT=CAN_FILTER_CAN_ACAN
 
-export  TARGET=can_filter_v2_native_esp32c6
+export LANG="default"
+#export LANG="english"
+export TARGET=can_filter_v2_native_esp32c6
 
 #EXTRA_FLAGS="-v"
 
@@ -72,8 +74,12 @@ compile() {
 	#fi
 
 	# Replace environment variables inside web page
-	awk/ENV.awk web/index.html > index.gen.html
-	
+	if [ "$LANG" == "english" ]; then
+		awk/ENV.awk web/index_english.html > index.gen.html
+	else
+		awk/ENV.awk web/index.html > index.gen.html
+	fi
+
 	# Compress WEB
 	gzip -9 -c index.gen.html > index.gen.html.gz
 

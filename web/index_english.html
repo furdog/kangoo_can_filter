@@ -188,8 +188,15 @@ class ajax {
 			if (this.responseText.length <= 0)
 				return;
 
+			var args;
+
 			console.log("recv|    " + request);
-			var args = JSON.parse(this.responseText);
+			try {
+				args = JSON.parse(this.responseText);
+			} catch (e) {
+				args = [];
+			}
+
 			xhttp.sender.on_recv(args);
 		}
 
@@ -407,7 +414,7 @@ function regulator_create(parent, rmin, rmax, rstep, orient)
 		field.max = rmax;
 		field.step = rstep;
 	
-		const button = button_create(popup.content, "Apply");
+		const button = button_create(popup.content, "Set");
 		button.on_press = function() {
 			layout.set_value(field.value);
 			layout.ajax.send([layout.value.toFixed(digits)]);
@@ -467,6 +474,7 @@ const ID_BMS_STOP_WIFI = 14;
 const ID_BMS_KWT_COUNTER_ENABLED = 15;
 const ID_BMS_KWT_COUNTER = 16;
 const ID_BMS_RELOAD = 17;
+const ID_BMS_FAKE_BMS_ENABLED = 18;
 
 var check_fs_corruption = true;
 
@@ -533,8 +541,8 @@ bms_info.ajax.on_recv = function(args)
 	bms_info.soc.innerHTML = "SOC: " + args[2] + "%";
 	bms_info.current.innerHTML = "Current: " + args[3] + "A";
 	bms_info.temp.innerHTML = "Temp: " + args[4] + "C";
-	bms_info.max_current.innerHTML = "Max. in: " + args[5] + "kWt";
-	bms_info.min_cell.innerHTML = "Max. cell: " + args[6] + "V";
+	bms_info.max_current.innerHTML = "Max input: " + args[5] + "kWt";
+	bms_info.min_cell.innerHTML = "Min cell: " + args[6] + "V";
 	bms_info.max_cell.innerHTML = "Max: " + args[7] + "V (d=" + parseFloat(args[7] - args[6]).toFixed(3) + ")";
 	
 	const kwh = parseFloat(args[8]).toFixed(1) + "kWh (" + parseFloat(args[8] * 1000 / 96 / 3.6).toFixed(1);
@@ -547,8 +555,8 @@ bms_info.ajax.on_recv = function(args)
 	bms_info.recu.innerHTML = "Recuperation: " + args[9] + "kWt";
 	
 	if (check_fs_corruption && args[10]) {
-		const fs_corrupted = popup_create(document.body, "Filesystem malfunction");
-		const ok = button_create(fs_corrupted.content, "Acknowledge");
+		const fs_corrupted = popup_create(document.body, "File system is corrupted");
+		const ok = button_create(fs_corrupted.content, "Understood");
 		ok.on_press = function() { fs_corrupted.remove(); }
 		check_fs_corruption = false;
 	}
@@ -634,19 +642,19 @@ bms_regulators.soh_mul.content.regulator.set_format("percentage");
  * BATTERY NEW CAPACITY REGULATOR
  ***********************************************/
 bms_regulators.new_capacity = create_bms_regulator(
-	bms_regulators.content, 0.0, 100.0, 1, 8, 9, "Battery capacity(kWt)");
+	bms_regulators.content, 0.0, 100.0, 1, 8, 9, "Battery capacity (kWh)");
 
  /************************************************
  * UBERCHARGE VOLTAGE REGULATOR
  ***********************************************/
 bms_regulators.ubercharge = create_bms_regulator(
-	bms_regulators.content, 3.2, 4.20, 0.01, 10, 11, "Overcharge by max. cell(V)");
+	bms_regulators.content, 3.2, 4.20, 0.01, 10, 11, "Overcharge by max cell (V)");
 
  /************************************************
  * MAX INPUT POWER REGULATOR
  ***********************************************/
 bms_regulators.max_charge_power = create_bms_regulator(
-	bms_regulators.content, 0, 20, 0.33, 12, 13, "Limit charging power(kWt)");
+	bms_regulators.content, 0, 20, 0.33, 12, 13, "Limit charging power (kWt)");
 
 
 /************************************************
@@ -665,8 +673,8 @@ function create_kwt_counter(parent)
 	}
 	
 	/** Set current capacity. */
-	const subpane = subpane_create(pane.content, "Set emulated capacity(kWh)");
-	const confirm_button = button_create(subpane.toolbar, "Confirm");
+	const subpane = subpane_create(pane.content, "Set remaining capacity(kWh)");
+	const confirm_button = button_create(subpane.toolbar, "Apply");
 	confirm_button.style.padding = "0.1em";
 	confirm_button.on_press = function() {
 		//text.innerHTML = regulator.value.toFixed(2);
@@ -678,7 +686,7 @@ function create_kwt_counter(parent)
 
 	/** Print current capacity. */
 	const layout = layout_create(pane.content, "h");
-	text_create(layout, "Current battery capacity(kWh):");
+	text_create(layout, "Battery capacity now (kWh):");
 	const text = text_create(layout, "0.00");
 	text.ajax.id = ID_BMS_KWT_COUNTER;
 	
@@ -691,10 +699,26 @@ function create_kwt_counter(parent)
 	return pane;
 }
 
+function create_fake_bms(parent)
+{
+	const pane = subpane_create(parent.content, "Battery emulation");
+
+	/** Enabler. */
+	const enabled = checkbox_create(pane.toolbar, true);
+	enabled.ajax.id = ID_BMS_FAKE_BMS_ENABLED;
+	enabled.style.padding = "0.1em";
+	enabled.on_check = function(state) {
+		pane.content.style.visibility = state ? "" : "hidden";
+	}
+	
+	return pane;
+}
+
 function create_emulators_pane()
 {
 	const pane = pane_create(document.body, "Emulation");
 	pane.kwt_counter = create_kwt_counter(pane);
+	pane.fake_bms = create_fake_bms(pane);
 
 	return pane;
 }
@@ -704,7 +728,7 @@ const bms_emulators = create_emulators_pane();
 /************************************************
  * ADDITIONAL
  ***********************************************/
-const bms_additional = pane_create(document.body, "Additional");
+const bms_additional = pane_create(document.body, "Extra");
 
 /************************************************
  * DISABLE WIFI
@@ -713,7 +737,7 @@ const disable_wifi = subpane_create(bms_additional.content, "Disable Wi-Fi");
 disable_wifi.button = button_create(disable_wifi.content, "?");
 disable_wifi.button.on_press = function()
 {
-	const popup = popup_create(document.body, "Wish to disable Wi-Fi?");
+	const popup = popup_create(document.body, "Do you wish to disable Wi-Fi?");
 	popup.content.style.flexWrap = "nowrap";
 	popup.content.style.justifyContent = "center";
 	popup.content.style.padding = "1em";
@@ -733,16 +757,16 @@ const reload_canbox = subpane_create(bms_additional.content, "Reboot CanBox");
 reload_canbox.button = button_create(reload_canbox.content, "?");
 reload_canbox.button.on_press = function()
 {
-	const popup = popup_create(document.body, "Wish to reboot CanBox?");
+	const popup = popup_create(document.body, "Do you wish to reboot CanBox?");
 	popup.content.style.flexWrap = "nowrap";
 	popup.content.style.justifyContent = "center";
 	popup.content.style.padding = "1em";
 	
-	const yes = button_create(popup.content, "yes");
+	const yes = button_create(popup.content, "Yes");
 	yes.ajax.id = ID_BMS_RELOAD;
 	yes.on_press = function() { popup.remove(); }
 	
-	const no = button_create(popup.content, "no");
+	const no = button_create(popup.content, "No");
 	no.on_press = function() { popup.remove(); }
 }
 
@@ -770,13 +794,13 @@ drop_settings.button.on_press = function()
 /************************************************
  * UPDATE FIRMWARE
  ***********************************************/
-var update_firmware = subpane_create(bms_additional.content, "Firmware update");
+var update_firmware = subpane_create(bms_additional.content, "Firmware Update");
 update_firmware.content.style.flexDirection = "column";
 update_firmware.style.flex = "100%";
 update_firmware.content.innerHTML = '\
 	<iframe name= "hidden-iframe" style= "display: none;"></iframe>\
 	<form method= "post" enctype= "multipart/form-data" target = "hidden-iframe" action = "update" style= "display:contents">\
-		native_v9_eng<input type= "file" class = "layout" id= "file" name= "file">\
+		@ENV:GIT_REPO_VERSION<input type= "file" class = "layout" id= "file" name= "file">\
 		<button class = "button">Confirm</button>\
 	</form>'
 
