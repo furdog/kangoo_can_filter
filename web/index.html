@@ -800,7 +800,7 @@ update_firmware.style.flex = "100%";
 update_firmware.content.innerHTML = '\
 	<iframe name= "hidden-iframe" style= "display: none;"></iframe>\
 	<form method= "post" enctype= "multipart/form-data" target = "hidden-iframe" action = "update" style= "display:contents">\
-		@ENV:GIT_REPO_VERSION<input type= "file" class = "layout" id= "file" name= "file">\
+		@ENV:TARGET: @ENV:GIT_REPO_VERSION<input type= "file" class = "layout" id= "file" name= "file">\
 		<button class = "button">Підтвердити</button>\
 	</form>'
 
