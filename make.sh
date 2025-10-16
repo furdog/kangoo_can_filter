@@ -16,7 +16,8 @@ OTA_IP="7.7.7.7"
 
 export LANG="default"
 #export LANG="english"
-export TARGET=can_filter_v2_native_esp32c6
+#export TARGET=can_filter_v2_native_esp32c6
+export TARGET=can_filter_esp32c6_zero
 
 #EXTRA_FLAGS="-v"
 
@@ -39,6 +40,11 @@ elif [ "$TARGET" == "can_filter_v2_native_esp32c6" ]; then
 	BOARD=esp32:esp32:esp32c6
 	#FQBN=:CDCOnBoot=cdc
 	FQBN= #Disabled temporaryly due to serial port conflict
+elif [ "$TARGET" == "can_filter_esp32c6_zero" ]; then
+	BOARD=esp32:esp32:esp32c6
+	#FQBN=:CDCOnBoot=cdc
+	FQBN= #Disabled temporaryly due to serial port conflict
+	echo "#define CAN_FILTER_ESP32C6_ZERO" > target.gen.h
 else
 	echo "Bad target!"
 	exit 1
