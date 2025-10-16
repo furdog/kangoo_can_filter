@@ -297,7 +297,12 @@ void can_filter(struct kangoo_can_frame *frame)
 						
 			bms_kwh = bms_kwt_counter;
 
-			/* Change real, battery kwh (Testing) */
+			/* Commit setting, since counter changed */
+			commit_settings();
+		}
+
+		/* Change real, battery kwh (Testing) */
+		if (bms_kwt_counter_enabled) {
 			uint16_t bms_kwh_raw_new = bms_kwh * 10u;
 
 			if (bms_kwh_raw_new > 0x01FFu) {
@@ -310,11 +315,8 @@ void can_filter(struct kangoo_can_frame *frame)
 			/* Set bits */
 			frame->data[0] |= (bms_kwh_raw_new >> 8u);
 			frame->data[1]  =  bms_kwh_raw_new & 0xFFu;
-
-			/* Commit setting, since counter changed */
-			commit_settings();
 		}
-		
+
 		bms_kwt_counter_elapsed = millis();
 			
 		break;
