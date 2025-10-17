@@ -240,8 +240,9 @@ void can_filter(struct kangoo_can_frame *frame)
 	case 0x424:
 		bms_temp = frame->data[4] - 40;
 		bms_soh = frame->data[5];
-			
-		if (bms_ubercharge_enabled)
+
+		/* Never activate ubercharge beyond 4.2, the car might explode*/
+		if (bms_ubercharge_enabled && bms_max_cell_v < 4.2f)
 			frame->data[0] = ubercharge() ? 0x11 : 0x12;
 		
 		if (bms_recuperation_multiplier_enabled) {
