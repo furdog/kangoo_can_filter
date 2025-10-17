@@ -118,9 +118,9 @@ void bms_wifi_reset_sequence(bool key)
 	bms_ignition_key_timestamp = millis();
 	bms_ignition_key_counter++;
 	
-	/** If ignition key was turned 5 times,
+	/** If ignition key was turned 3 times,
 	 *  with less or equal than 2000ms intervals - reset wifi. */
-	if (bms_ignition_key_counter >= 5)
+	if (bms_ignition_key_counter >= 3)
 		ESP.restart();
 }
 
