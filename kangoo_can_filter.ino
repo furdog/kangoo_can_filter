@@ -272,7 +272,11 @@ void can_filter(struct kangoo_can_frame *frame)
 		break;
 
 	case 0x425:
-		bms_kwh = (((uint16_t)frame->data[0] & 0x0001) << 8 | frame->data[1]) / 10.0;		
+		/* Do not read bms_kwh when counter is enabled */
+		if (!bms_kwt_counter_enabled) {
+			bms_kwh = (((uint16_t)frame->data[0] & 0x0001) << 8 | frame->data[1]) / 10.0;		
+		}
+
 		bms_min_cell_v = ((((uint16_t)frame->data[6] & 0x0001) << 8 | frame->data[7]) + 100) / 100.0;
 		bms_max_cell_v = (((((uint16_t)frame->data[4] & 0x0003) << 8 | frame->data[5]) >> 1) + 100) / 100.0;
 	
@@ -288,7 +292,7 @@ void can_filter(struct kangoo_can_frame *frame)
 		/* Do not count in unrealistic scenarios */
 		if (bms_kwt_counter_enabled &&
 		    (bms_kwt_counter_elapsed <= 200) && bms_voltage <= 420 &&
-		    (bms_current <= 150 && bms_current >= -150)) {
+		    (bms_current <= 200 && bms_current >= -200)) { /* prev limit was 150, didn't work well in some cases */
 			double per_hour = ((double)bms_kwt_counter_elapsed / (1000 * 60 * 60));
 			/* printf("%lu\n", elapsed); */
 
