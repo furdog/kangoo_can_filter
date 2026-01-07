@@ -143,8 +143,8 @@ bool ubercharge()
 	
 	/** Set bounds. */					
 	if (bms_limit_charge_kwt < 0.0) {
-		if (bms_custom_capacity_enabled && reached_target)
-			bms_kwt_counter = bms_custom_capacity;
+		//if (bms_custom_capacity_enabled && reached_target)
+		//	bms_kwt_counter = bms_custom_capacity;
 			
 		bms_limit_charge_kwt = 0.0;	
 		result = false;
@@ -297,9 +297,14 @@ void can_filter(struct kangoo_can_frame *frame)
 			/* printf("%lu\n", elapsed); */
 
 			bms_kwt_counter += (double)(bms_voltage * bms_current) / 1000.0 * per_hour;
-			if (bms_kwt_counter < 0)
+
+			/* CLAMP */
+			if (bms_kwt_counter < 0) {
 				bms_kwt_counter = 0;
-						
+			} else if (bms_kwt_counter > bms_custom_capacity) {
+				bms_kwt_counter = bms_custom_capacity;
+			}
+
 			bms_kwh = bms_kwt_counter;
 
 			/* Commit setting, since counter changed */
@@ -354,6 +359,12 @@ void can_filter(struct kangoo_can_frame *frame)
 #endif
 
   		bms_charger_plugged_in = (frame->data[6] > 0x00) ? true : false;
+
+		/* Set kwt counter to 100% after threshold is reached */
+		if (bms_charger_plugged_in && bms_custom_capacity_enabled &&
+		    (bms_max_cell_v >= 4.10 && bms_max_cell_v < 4.50)) {
+			bms_kwt_counter = bms_custom_capacity;
+		}
 		break;
 
 #ifdef KANGOO_FAKE_BMS2
