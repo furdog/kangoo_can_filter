@@ -196,6 +196,13 @@ void kangoo_can_filter_mcp2515_recv(struct kangoo_can_frame *frame)
 
 #define TWAI_BUS_1_TX GPIO_NUM_4
 #define TWAI_BUS_1_RX GPIO_NUM_3
+#elif defined(CAN_FILTER_V3_NATIVE_ESP32)
+#warning ESP32C6_V3 is used!
+#define TWAI_BUS_0_TX GPIO_NUM_18
+#define TWAI_BUS_0_RX GPIO_NUM_19
+
+#define TWAI_BUS_1_TX GPIO_NUM_14
+#define TWAI_BUS_1_RX GPIO_NUM_15
 #elif !defined(CAN_FILTER_V1_NATIVE_ESP32) /* ESP32C6 */
 #warning ESP32C6 is used!
 #define TWAI_BUS_0_TX GPIO_NUM_13 /* Conflicts with USB */

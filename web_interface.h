@@ -351,7 +351,8 @@ void web_interface_init()
 	web_server.on("/", ajax_query);
 	web_server.on("/update", HTTP_POST, send_ok, download_firmware);
 	web_server.onNotFound(ajax_query);
-	
+
+	dns_server.setErrorReplyCode(DNSReplyCode::NoError);	
 	dns_server.start(53, "*", WiFi.softAPIP());  
 	web_server.begin();
 }

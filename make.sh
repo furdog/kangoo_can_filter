@@ -5,19 +5,21 @@
 ###############################################################################
 COMPILER=./tools/arduino-cli
 
-SERIAL_PORT=COM5
+SERIAL_PORT=COM88
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
+
+export LANG="default"
+#export LANG="english"
 
 # Targets:
 #export TARGET=can_filter_v1_native_esp32
 #export CANLIB_VARIANT=CAN_FILTER_CAN_ADAFRUIT #buggy, do not use
 #export CANLIB_VARIANT=CAN_FILTER_CAN_ACAN
 
-export LANG="default"
-#export LANG="english"
 #export TARGET=can_filter_v2_native_esp32c6
-export TARGET=can_filter_esp32c6_zero
+export TARGET=can_filter_v3_native_esp32c6
+#export TARGET=can_filter_esp32c6_zero
 
 #EXTRA_FLAGS="-v"
 
@@ -40,6 +42,13 @@ elif [ "$TARGET" == "can_filter_v2_native_esp32c6" ]; then
 	BOARD=esp32:esp32:esp32c6
 	#FQBN=:CDCOnBoot=cdc
 	FQBN= #Disabled temporaryly due to serial port conflict
+elif [ "$TARGET" == "can_filter_v3_native_esp32c6" ]; then
+	BOARD=esp32:esp32:esp32c6
+	#FQBN=:CDCOnBoot=cdc
+	FQBN= #Disabled temporaryly due to serial port conflict
+	echo "$BOARD"
+	echo "#define CAN_FILTER_V3_NATIVE_ESP32" > target.gen.h
+	echo "#define" "$CANLIB_VARIANT" >> target.gen.h
 elif [ "$TARGET" == "can_filter_esp32c6_zero" ]; then
 	BOARD=esp32:esp32:esp32c6
 	#FQBN=:CDCOnBoot=cdc
