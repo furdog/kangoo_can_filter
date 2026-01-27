@@ -57,21 +57,30 @@ void save_settings()
 
 void save_version_on_first_start() 
 {
-	if (LittleFS.exists("/version.txt")) {
-		// Open for reading
-		File f = LittleFS.open("/version.txt", "r");
-		if (f) {
-			String current_ver = f.readString();
-			printf("System already initialized."
-			       " Current version: %s\n", current_ver.c_str());
-			f.close();
+	File f;
+
+	f = LittleFS.open("/version.txt", "r");
+	if (f) {
+		String current_ver = f.readString();
+		f.close();
+
+		printf("System already initialized.\n");
+
+		printf("Stored version: %s\n", current_ver.c_str());
+		printf("Loaded version: %s\n", __CAN_FILTER_VERSION__);
+
+		if (!strstr(current_ver.c_str(), __CAN_FILTER_VERSION__))
+		{
+			printf("Version difference spotted!\n");
+		} else {
+			printf("Version didn't change since last boot.\n");
+			return;
 		}
-		return; 
 	}
 
-	printf("First start detected. Writing version: %s\n", __CAN_FILTER_VERSION__);
+	printf("Writing version: %s\n", __CAN_FILTER_VERSION__);
     
-	File f = LittleFS.open("/version.txt", "w");
+	f = LittleFS.open("/version.txt", "w");
 	if (!f) {
 		printf("Failed to create version file\n");
 		return;

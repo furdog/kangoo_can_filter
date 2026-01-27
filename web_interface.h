@@ -351,6 +351,21 @@ void web_interface_init()
 
 	web_server.on("/", ajax_query);
 	web_server.on("/update", HTTP_POST, send_ok, download_firmware);
+	web_server.on("/version", HTTP_GET, []() {
+		if (LittleFS.exists("/version.txt")) {
+			File f = LittleFS.open("/version.txt", "r");
+			if (f) {
+				// Read the file and send it
+				String version = f.readString();
+				f.close();
+				web_server.send(200, "text/plain", version);
+			return;
+			}
+		}
+	    
+		// Fallback if file doesn't exist
+		web_server.send(200, "text/plain", __CAN_FILTER_VERSION__);
+	});
 	web_server.onNotFound(ajax_query);
 
 	dns_server.setErrorReplyCode(DNSReplyCode::NoError);	
