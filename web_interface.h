@@ -92,7 +92,8 @@ void ajax_query()
 		+ floatToJsonString(bms_max_cell_v, 3) + ","
 		+ floatToJsonString(bms_kwh, 3) + ","
 		+ floatToJsonString(bms_max_recu_kwt, 3) + ","
-		+ String(filesystem_is_corrupted())
+		+ String(filesystem_is_corrupted()) + ","
+		+ String(ESP.getFreeHeap())
 		+ "]";
 		web_server.send(200, "text/plain", text);
 		break;

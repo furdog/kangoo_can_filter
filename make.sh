@@ -1,11 +1,16 @@
 #!/bin/bash
 
+# Set environment variables
+if [ -z "${GIT_REPO_VERSION+x}" ]; then
+	export GIT_REPO_VERSION=$(git describe --tags)
+fi
+
 ###############################################################################
 # CONFIGURATION:
 ###############################################################################
 COMPILER=./tools/arduino-cli
 
-SERIAL_PORT=COM88
+SERIAL_PORT=COM86
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
@@ -31,6 +36,8 @@ export TARGET=can_filter_v3_native_esp32c6
 > index.gen.h
 
 if [ "$TARGET" == "can_filter_v1_native_esp32" ]; then
+	export __CAN_FILTER_VERSION__="h1_$GIT_REPO_VERSION"
+
 	BOARD=esp32:esp32:nodemcu-32s
 	FQBN=:UploadSpeed=921600
 	PROPS='--build-property build.partitions=partitions
@@ -39,17 +46,22 @@ if [ "$TARGET" == "can_filter_v1_native_esp32" ]; then
 	echo "#define CAN_FILTER_V1_NATIVE_ESP32" > target.gen.h
 	echo "#define" "$CANLIB_VARIANT" >> target.gen.h
 elif [ "$TARGET" == "can_filter_v2_native_esp32c6" ]; then
+	export __CAN_FILTER_VERSION__="h2_$GIT_REPO_VERSION"
+
 	BOARD=esp32:esp32:esp32c6
 	#FQBN=:CDCOnBoot=cdc
 	FQBN= #Disabled temporaryly due to serial port conflict
 elif [ "$TARGET" == "can_filter_v3_native_esp32c6" ]; then
+	export __CAN_FILTER_VERSION__="h3_$GIT_REPO_VERSION"
+
 	BOARD=esp32:esp32:esp32c6
 	#FQBN=:CDCOnBoot=cdc
 	FQBN= #Disabled temporaryly due to serial port conflict
 	echo "$BOARD"
 	echo "#define CAN_FILTER_V3_NATIVE_ESP32" > target.gen.h
-	echo "#define" "$CANLIB_VARIANT" >> target.gen.h
 elif [ "$TARGET" == "can_filter_esp32c6_zero" ]; then
+	export __CAN_FILTER_VERSION__="hz_$GIT_REPO_VERSION"
+
 	BOARD=esp32:esp32:esp32c6
 	#FQBN=:CDCOnBoot=cdc
 	FQBN= #Disabled temporaryly due to serial port conflict
@@ -59,14 +71,11 @@ else
 	exit 1
 fi
 
+echo "#define __CAN_FILTER_VERSION__ \"$__CAN_FILTER_VERSION__\"" >> target.gen.h
+
 ###############################################################################
 # MAIN
 ###############################################################################
-# Set environment variables
-if [ -z "${GIT_REPO_VERSION+x}" ]; then
-	export GIT_REPO_VERSION=$(git describe --tags)
-fi
-
 mk_base64_updater()
 {
 	local BOARD_PATH="${BOARD//:/\.}"  # Replace ':' with '.'
@@ -77,7 +86,7 @@ mk_base64_updater()
 
 	# Generate updater html file (with embedded base64 firmware)
 	awk/ENV.awk web/kangoo_can_filter_updater.html > \
-		     build/"$BOARD_PATH"/"$TARGET"_"$GIT_REPO_VERSION".html
+		     build/"$BOARD_PATH"/"kangoo_can_filter_$__CAN_FILTER_VERSION__".html
 }
 
 compile() {

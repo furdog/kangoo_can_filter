@@ -475,6 +475,7 @@ const ID_BMS_KWT_COUNTER_ENABLED = 15;
 const ID_BMS_KWT_COUNTER = 16;
 const ID_BMS_RELOAD = 17;
 const ID_BMS_FAKE_BMS_ENABLED = 18;
+const ID_BMS_PINOUT_VARIANT = 19;
 
 var check_fs_corruption = true;
 
@@ -504,6 +505,8 @@ if(window.location.protocol == 'file:') {
 
 		bms_regulators.max_charge_power.toolbar.checkbox.ajax.on_recv([1]);
 		bms_regulators.max_charge_power.content.regulator.ajax.on_recv([10]);
+
+		//pinout_variant.content.regulator.ajax.on_recv([2]);
 	} ,3000);
 }
 
@@ -605,6 +608,16 @@ function create_bms_regulator(parent, rmin, rmax, rstep,
 	const subpane = subpane_create(parent, caption);
 	subpane.content.style.flexBasis = "33.333333%";
 	subpane.content.style.visibility = "hidden";
+
+	subpane.content.regulator = regulator_create(subpane.content, rmin, rmax, rstep);
+
+	/* Do not create enabler toolbar */
+	if (enabler_id == -1) {
+		subpane.content.regulator.ajax.id = regulator_value_id;
+		subpane.content.style.visibility = "";
+		return subpane;
+	}
+
 	subpane.toolbar.checkbox = checkbox_create(subpane.toolbar, false);
 	subpane.toolbar.checkbox.style.padding = "0.1em";
 	subpane.toolbar.checkbox.ajax.id = enabler_id;
@@ -618,9 +631,7 @@ function create_bms_regulator(parent, rmin, rmax, rstep,
 			subpane.content.style.visibility = "hidden";
 		}
 	}
-	
-	subpane.content.regulator = regulator_create(subpane.content, rmin, rmax, rstep);
-	
+		
 	return subpane;
 }
 
@@ -730,6 +741,12 @@ const bms_emulators = create_emulators_pane();
  ***********************************************/
 const bms_additional = pane_create(document.body, "Додатково");
 
+ /************************************************
+ * PINOUT
+ ***********************************************/
+/*const pinout_variant =
+	create_bms_regulator(bms_additional.content, 1, 4, 1, -1, ID_BMS_PINOUT_VARIANT, "Варіант розпіновки фільтру");*/
+
 /************************************************
  * DISABLE WIFI
  ***********************************************/
@@ -800,7 +817,7 @@ update_firmware.style.flex = "100%";
 update_firmware.content.innerHTML = '\
 	<iframe name= "hidden-iframe" style= "display: none;"></iframe>\
 	<form method= "post" enctype= "multipart/form-data" target = "hidden-iframe" action = "update" style= "display:contents">\
-		@ENV:TARGET: @ENV:GIT_REPO_VERSION<input type= "file" class = "layout" id= "file" name= "file">\
+		@ENV:TARGET: @ENV:__CAN_FILTER_VERSION__<input type= "file" class = "layout" id= "file" name= "file">\
 		<button class = "button">Підтвердити</button>\
 	</form>'
 

@@ -1,4 +1,5 @@
 #include "LittleFS.h"
+#include "target.gen.h"
 
 bool settings_committed = false;
 bool filesystem_corrupted = false;
@@ -54,6 +55,32 @@ void save_settings()
 	f.close();
 }
 
+void save_version_on_first_start() 
+{
+	if (LittleFS.exists("/version.txt")) {
+		// Open for reading
+		File f = LittleFS.open("/version.txt", "r");
+		if (f) {
+			String current_ver = f.readString();
+			printf("System already initialized."
+			       " Current version: %s\n", current_ver.c_str());
+			f.close();
+		}
+		return; 
+	}
+
+	printf("First start detected. Writing version: %s\n", __CAN_FILTER_VERSION__);
+    
+	File f = LittleFS.open("/version.txt", "w");
+	if (!f) {
+		printf("Failed to create version file\n");
+		return;
+	}
+    
+	f.print(__CAN_FILTER_VERSION__); 
+	f.close();
+}
+
 void load_settings()
 {
 	struct settings settings;
@@ -61,6 +88,8 @@ void load_settings()
 	/** First run. */
 	if (!LittleFS.exists("/settings.bin"))
 		save_settings();
+
+	save_version_on_first_start();
 	
 	printf("loading...\n");
 	File f = LittleFS.open("/settings.bin", "r");
