@@ -71,7 +71,7 @@ else
 	exit 1
 fi
 
-echo "#define __CAN_FILTER_VERSION__ \"$__CAN_FILTER_VERSION__\"" >> target.gen.h
+echo "#define __CAN_FILTER_VERSION__ \"kangoo_can_filter_$__CAN_FILTER_VERSION__\"" >> target.gen.h
 
 ###############################################################################
 # MAIN

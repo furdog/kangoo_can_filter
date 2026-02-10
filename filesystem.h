@@ -48,6 +48,7 @@ void save_settings()
 	printf("saving...\n");
 	File f = LittleFS.open("/settings.bin", "w");
 	if (!f) {
+		filesystem_corrupted = true;
 		printf("failed opening '/settings.bin' for write\n");
 		return;
 	}
@@ -82,6 +83,7 @@ void save_version_on_first_start()
     
 	f = LittleFS.open("/version.txt", "w");
 	if (!f) {
+		filesystem_corrupted = true;
 		printf("Failed to create version file\n");
 		return;
 	}
