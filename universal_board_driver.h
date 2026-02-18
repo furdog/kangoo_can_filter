@@ -294,6 +294,7 @@ void kangoo_can_filter_esp32_twai_send(twai_handle_t *bus,
 
 		// Configure message to transmit
 		twai_message_t msg;
+		memset(&msg, 0, sizeof(msg));
 		
 		// Message type and format settings
 		msg.extd = 0;         // Standard vs extended format
@@ -322,6 +323,7 @@ void kangoo_can_filter_esp32_twai_recv(twai_handle_t *bus,
 	assert(bus == &twai_bus_0 || bus == &twai_bus_1);
 						
 	twai_message_t msg;
+	memset(&msg, 0, sizeof(msg));
 
 	if (twai_receive_v2(*bus, &msg, 0) == ESP_OK &&
 	    msg.data_length_code <= 8) {

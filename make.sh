@@ -10,7 +10,7 @@ fi
 ###############################################################################
 COMPILER=./tools/arduino-cli
 
-SERIAL_PORT=COM86
+SERIAL_PORT=COM18
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
