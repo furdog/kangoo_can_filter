@@ -124,6 +124,24 @@ void bms_wifi_reset_sequence(bool key)
 		ESP.restart();
 }
 
+/* onboard computer buttons */
+void obc_buttons_process(uint8_t status)
+{
+	static uint32_t counter = 0;
+
+	/* Both buttons */
+	if (status == 0x03) {
+		counter++;
+	} else {
+		counter = 0;
+	}
+
+	/* Both buttons pressed for 3 sec */
+	if (counter > 30u) {
+		ESP.restart();
+	}
+}
+
 #ifdef BMS_UBERCHARGE
 bool ubercharge()
 {
@@ -373,6 +391,10 @@ void can_filter(struct kangoo_can_frame *frame)
 		kangoo_can_filter_fake_bms_report_real_bms_message_triggered(&fbms);
 		break;
 #endif
+
+	case 0x60D:
+		obc_buttons_process(frame->data[7]);
+		break;
 
 	case 0x659:
 		/** Break if no filtering allowed. */
