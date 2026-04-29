@@ -203,6 +203,12 @@ void kangoo_can_filter_mcp2515_recv(struct kangoo_can_frame *frame)
 
 #define TWAI_BUS_1_TX GPIO_NUM_14
 #define TWAI_BUS_1_RX GPIO_NUM_15
+
+/* Added since v3.1*/
+//#define RECUPERATION_BUTTON_MINUS GPIO_NUM_8 /* Conflicts with builtin LED */
+#define RECUPERATION_BUTTON_MINUS GPIO_NUM_20
+//#define RECUPERATION_BUTTON_PLUS  GPIO_NUM_9
+#define RECUPERATION_BUTTON_PLUS  GPIO_NUM_12
 #elif !defined(CAN_FILTER_V1_NATIVE_ESP32) /* ESP32C6 */
 #warning ESP32C6 is used!
 #define TWAI_BUS_0_TX GPIO_NUM_13 /* Conflicts with USB */
@@ -211,11 +217,17 @@ void kangoo_can_filter_mcp2515_recv(struct kangoo_can_frame *frame)
 #define TWAI_BUS_1_TX GPIO_NUM_14
 #define TWAI_BUS_1_RX GPIO_NUM_15
 #else /* ADAFRUIT */
+#define LED_PIN 2
+#define LED2_PIN 15
+
 #define TWAI_BUS_0_TX GPIO_NUM_4
 #define TWAI_BUS_0_RX GPIO_NUM_16
 
 #define TWAI_BUS_1_TX GPIO_NUM_4
 #define TWAI_BUS_1_RX GPIO_NUM_16
+
+#define RECUPERATION_BUTTON_MINUS GPIO_NUM_25
+#define RECUPERATION_BUTTON_PLUS  GPIO_NUM_26
 #endif
 
 twai_handle_t twai_bus_0;
@@ -347,11 +359,10 @@ void kangoo_can_filter_esp32_twai_recv(twai_handle_t *bus,
  * LEDS / WIFI / BUTTONS
  *****************************************************************************/
 #ifndef CAN_FILTER_V1_NATIVE_ESP32
-
 #include <Adafruit_NeoPixel.h>
 #include "dev_timeout_led_indicator.h"
 
-#define PIN_WS2812B 8
+#define PIN_WS2812B GPIO_NUM_8
 #define NUM_PIXELS 1
 
 struct dev_timeout_led_indicator led_indicator;
@@ -364,15 +375,19 @@ struct button bms_recuperation_button_plus;
 
 void kangoo_can_filter_init_other()
 {
-#ifdef CAN_FILTER_V1_NATIVE_ESP32
-	pinMode(13, INPUT_PULLUP); //disable wifi on boot
+#ifdef RECUPERATION_BUTTON_MINUS
+	/* Enable recuperation buttons */
 	pinMode(RECUPERATION_BUTTON_MINUS, INPUT_PULLUP);
 	pinMode(RECUPERATION_BUTTON_PLUS, INPUT_PULLUP);
-	pinMode(LED_PIN, OUTPUT);
-	pinMode(LED2_PIN, OUTPUT);
 
 	button_init(&bms_recuperation_button_minus);
 	button_init(&bms_recuperation_button_plus);
+#endif
+
+#ifdef CAN_FILTER_V1_NATIVE_ESP32
+	pinMode(13, INPUT_PULLUP); //disable wifi on boot
+	pinMode(LED_PIN, OUTPUT);
+	pinMode(LED2_PIN, OUTPUT);
 #else
 	dev_timeout_led_indicator_init(&led_indicator);
 	dev_timeout_led_indicator_set_count(&led_indicator, 2);
@@ -445,10 +460,12 @@ void kangoo_can_filter_update_other(uint32_t delta_time_ms)
 		}
 	}
 
-#ifdef CAN_FILTER_V1_NATIVE_ESP32
+#ifdef RECUPERATION_BUTTON_MINUS
 	bms_recuperation_button_minus.pressed = !digitalRead(RECUPERATION_BUTTON_MINUS);
 	bms_recuperation_button_plus.pressed  = !digitalRead(RECUPERATION_BUTTON_PLUS);
-#else
+#endif
+
+#ifndef CAN_FILTER_V1_NATIVE_ESP32
 	if (dev_timeout_led_indicator_update(&led_indicator, delta_time_ms)) {
 		ws2812b.setPixelColor(0, led_indicator.c.r, led_indicator.c.g,
 					 led_indicator.c.b);
