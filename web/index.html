@@ -408,15 +408,19 @@ function regulator_create(parent, rmin, rmax, rstep, orient)
 	
 	text.onclick = function() {
 		const popup = popup_create(document.body, "Ввести значення");
-		const field = field_create(popup.content, layout.value.toFixed(digits));
+
+		let mul = (layout.format == 'percentage' ? 100 : 1);
+
+		const field = field_create(popup.content, (layout.value * mul).toFixed(digits));
+
 		field.type = "number";
-		field.min = rmin;
-		field.max = rmax;
-		field.step = rstep;
+		field.min = rmin * mul;
+		field.max = rmax * mul;
+		field.step = rstep * mul;
 	
 		const button = button_create(popup.content, "Встановити");
 		button.on_press = function() {
-			layout.set_value(field.value);
+			layout.set_value(field.value / mul);
 			layout.ajax.send([layout.value.toFixed(digits)]);
 			popup.remove();
 		};
@@ -554,7 +558,6 @@ bms_info.ajax.on_recv = function(args)
 	const kwh_max = kwh_max_mul.toFixed(1) + "kWh (" + parseFloat(kwh_max_mul * 1000 / 96 / 3.6).toFixed(1);
 	bms_info.capacity.innerHTML = "Ємність: " + kwh + "aH)";
 	bms_info.max_capacity.innerHTML = "Макс: " + kwh_max + "aH)";
-	bms_emulators.kwt_counter.set_value(kwh);
 	bms_info.recu.innerHTML = "Рекуперація: " + args[9] + "kWt";
 	
 	if (check_fs_corruption && args[10]) {
@@ -570,7 +573,7 @@ bms_info.ajax.on_recv = function(args)
 /************************************************
  * FILTER ERRORS
  ***********************************************/
-const bms_filter_errors = pane_create(document.body, "Фільтрація");
+const bms_filter_errors = pane_create(document.body, "Помилки");
 bms_filter_errors.content.style.visibility = "hidden";
 
 bms_filter_errors.toolbar.checkbox = checkbox_create(bms_filter_errors.toolbar, false);
@@ -653,7 +656,7 @@ bms_regulators.soh_mul.content.regulator.set_format("percentage");
  * BATTERY NEW CAPACITY REGULATOR
  ***********************************************/
 bms_regulators.new_capacity = create_bms_regulator(
-	bms_regulators.content, 0.0, 100.0, 1, 8, 9, "Ємність аккумулятора(kWh)");
+	bms_regulators.content, 0.0, 100.0, 1, 8, 9, "Ручне встановлення повної ємн. аккум.(kWh)");
 
  /************************************************
  * UBERCHARGE VOLTAGE REGULATOR
@@ -673,7 +676,7 @@ bms_regulators.max_charge_power = create_bms_regulator(
  ***********************************************/
 function create_kwt_counter(parent)
 {
-	const pane = subpane_create(parent.content, "Лічильник заряду");
+	const pane = subpane_create(parent.content, "Програмний лічильник заряду");
 	
 	/** Enabler. */
 	const enabled = checkbox_create(pane.toolbar, true);
@@ -682,31 +685,15 @@ function create_kwt_counter(parent)
 	enabled.on_check = function(state) {
 		pane.content.style.visibility = state ? "" : "hidden";
 	}
-	
-	/** Set current capacity. */
-	const subpane = subpane_create(pane.content, "Встановити поточну ємність(kWh)");
-	const confirm_button = button_create(subpane.toolbar, "Підтвердити");
-	confirm_button.style.padding = "0.1em";
-	confirm_button.on_press = function() {
-		//text.innerHTML = regulator.value.toFixed(2);
-		text.ajax.send([regulator.value]);
-	}
-	
-	/** Create regulator. */
-	const regulator = regulator_create(subpane.content, 0, 100, 1, 109, 110);	
 
-	/** Print current capacity. */
-	const layout = layout_create(pane.content, "h");
-	text_create(layout, "Поточна ємність аккумулятора(kWh):");
-	const text = text_create(layout, "0.00");
-	text.ajax.id = ID_BMS_KWT_COUNTER;
-	
-	pane.set_value = function(val) {
-		val = parseFloat(val);
-		text.innerHTML = val.toFixed(2);
-		//regulator.set_value(val);
-	}
-	
+	/** Set current capacity. */
+	const subpane = create_bms_regulator(
+		pane.content, 0, 100, 1, -1, ID_BMS_KWT_COUNTER,
+		"Встановити поточну ємність(kWh)");
+
+	/** Define set_value method for this pane object */
+	pane.set_value = subpane.content.regulator.set_value;
+
 	return pane;
 }
 
