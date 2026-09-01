@@ -151,6 +151,252 @@ body {
 </style>
 </head>
 
+<style>
+/* Used to blur non-hint elements, when entered into hint mode */
+@keyframes hint_overlay_fade_in {
+	0% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes hint_overlay_fade_out {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.hint_overlay_fade_in {
+	background: rgb(0 0 0 / 30%);
+
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+
+	backdrop-filter: blur(10px) sepia(1) brightness(0.5);
+
+	/* Soft appearence */
+	animation: hint_overlay_fade_in 0.3s ease-out forwards;
+}
+
+.hint_overlay_fade_out {
+	animation: hint_overlay_fade_out 0.3s ease-in forwards;
+}
+
+/* Badge, when pressed by user - enters hint mode */
+@keyframes hint_badge {
+	0% {
+		transform: rotateY(0deg) translateY(0px);
+		filter: drop-shadow(2px 4px 6px orange);
+	} 50% {
+		transform: rotateY(0deg) translateY(-5px);
+		filter: drop-shadow(0px 0px 0px orange);
+	} 100% {
+		transform: rotateY(0deg) translateY(0px);
+		filter: drop-shadow(2px 4px 6px orange);
+	}
+}
+
+.hint_badge {
+	position: fixed;
+	top: 0em;
+	right: 0em;
+	padding: 0;
+	font-size: 2em;
+	user-select: none;
+
+	animation-name: hint_badge;
+	animation-iteration-count: infinite;
+	animation-duration: 2s;
+	animation-timing-function: linear;
+}
+
+/* Every element to be hinted is considered a hint target.
+   Should not be used standalone, as it depends on hint tool implementation */
+@keyframes hint_target {
+	0% {
+		transform: scale(1);
+	} 100% {
+		transform: scale(0.75);
+	}
+}
+
+.hint_target {
+	box-shadow: 0 0 1em rgba(32, 255, 0, 0.8);
+
+	transform: scale(0.75);
+
+	/* Apply the initial scaling animation */
+	animation: hint_target 0.5s ease-out 0s;
+
+	/* For hover: Transition properties for smooth changes */
+	transition: box-shadow 0.5s ease-in-out, transform 0.3s ease-out;
+}
+
+.hint_target:hover {
+	transform: scale(1.0);
+	box-shadow: 0 0 1.5em rgba(32, 255, 0, 1);
+}
+</style>
+
+<script>
+class hint_tool {
+	/** Unique identifier */
+	constructor(uid) {
+		this.uid = uid;
+	}
+
+	/** Active overlay */
+	overlay = undefined;
+}
+
+/** Attaches hint to the element, click action may be specified */
+hint_tool.prototype.register = function (element, click_action) {
+	/* This elements now containts "hint dataset element" */
+	element.dataset["hint_" + this.uid] = "";
+
+	element["hint_action_" + this.uid] = click_action;
+}
+
+/** Creates a cloned element which mimics original element
+    appearence and position, but lies within another parent.
+    The original element is hidden unless delete() method is called.
+    The impostor element is not linked with the original, thus any
+    updates won"t be transfered after one has been created. */
+hint_tool.prototype.impostor_create = function (element, parent) {
+	/* 1. Store original visibility style to restore later */
+	const original_visibility = element.style.visibility;
+
+	/* 2. Clone the original element (deep clone to include children) */
+	const cloned = element.cloneNode(true);
+
+	/* 3. Hide the original element (preserving its space in the layout) */
+	element.style.visibility = "hidden";
+
+	/* 4. Remove any ID to prevent duplicate IDs in the DOM */
+	cloned.removeAttribute("id");
+
+	/* 5. Append the clone to the specified target parent */
+	parent.appendChild(cloned);
+
+	/* 6. Track original element position */
+	const position_tracker = setInterval(function() {
+		const rect = element.getBoundingClientRect();
+		cloned.style.top = rect.top + "px";
+		cloned.style.left = rect.left + "px";
+
+		cloned.style.position  = "fixed";
+		cloned.style.width  = `${rect.width}px`;
+		cloned.style.height = `${rect.height}px`;
+		cloned.style.margin = 0;
+	}, 0);
+
+
+	/* 7. Return an object with the remove and a reference to the clone */
+	return {
+		element: cloned,
+
+		remove: function() {
+			cloned.parentNode.removeChild(cloned);
+
+			/* Restore the original element"s visibility */
+			element.style.visibility = original_visibility;
+
+			/* Stop position tracker */
+			clearInterval(position_tracker);
+		}
+	};
+}
+
+/** Enters hint mode. Finds all element containing data-hint field,
+    and makes them a hint target */
+hint_tool.prototype.overlay_enable = function (parent) {
+	if (this.overlay) return; /* Already enabled */
+
+	this.overlay = document.createElement("div");
+	this.overlay.className = "hint_overlay_fade_in";
+	parent.appendChild(this.overlay);
+
+	/* Create impostor for each data-hint_ item */
+	document.querySelectorAll("[data-hint_" + this.uid + "]").forEach(item => {
+		item.impostor = this.impostor_create(item, parent);
+
+		if (item.classList.contains("hint_custom")) {
+			/* Do not set any actions or styles on custom hints */
+		} else {
+			item.impostor.element.onclick = item["hint_action_" + this.uid];
+			item.impostor.element.classList.add("hint_target");
+		}
+
+		/* Impostor should not have hint property
+		   This prevents from false enumeration when removing hints */
+		delete item.impostor.element.dataset["hint_" + this.uid];
+	});
+}
+
+/** Return everything to normal */
+hint_tool.prototype.overlay_disable = function () {
+	/* Remove all impostors */
+	document.querySelectorAll("[data-hint_" + this.uid + "]").forEach((item, index) => {
+		item.impostor.remove();
+		delete item.impostor;
+	});
+
+	this.overlay.classList.add("hint_overlay_fade_out");
+	this.overlay.addEventListener("animationend", () => {
+		if (this.overlay.parentNode) {
+			this.overlay.parentNode.removeChild(this.overlay);
+		}
+
+		delete this.overlay;
+	});
+}
+
+/** Toggles hint on and off */
+hint_tool.prototype.overlay_toggle = function (parent) {
+	if (this.overlay == undefined) {
+		this.overlay_enable(parent);
+	} else {
+		this.overlay_disable();
+	}
+}
+
+/** Hint badge created at the top right screen corner */
+hint_tool.prototype.badge_create = function hint_badge_create(parent) {
+	const badge = document.createElement("div");
+
+	/* Custom hints can not have any actions or hint_target style applied
+	   by default */
+	badge.classList.add("hint_custom", "hint_badge");
+
+	/* "..." dialog badge */
+	badge.innerHTML = "&#128172"
+	parent.appendChild(badge);
+
+	/* Badge becomes a valid hint target */
+	badge.dataset["hint_" + this.uid] = "";
+
+	badge.onclick = () => {
+		this.overlay_enable(parent);
+
+		/* "Overlay_enable" creates impostor for all hint targets,
+		    including badge element (see above) */
+		badge.impostor.element.onclick = () => {
+			this.overlay_disable();
+		}
+	}
+
+	return badge;
+}
+</script>
+
 <body>
 <script>
 class ajax {
@@ -515,6 +761,31 @@ if(window.location.protocol == 'file:') {
 }
 
 /************************************************
+ * HINTS IMPLEMENTATION
+ ***********************************************/
+/* Initialize hint tool */
+const hint = new hint_tool("global");
+
+/* Create badge at top right screen corner */
+const badge = hint.badge_create(document.body);
+
+function register_hint_dialog(parent, text) {
+	hint.register(parent, function() {
+		const popup = popup_create(document.body, "Підказка");
+		popup.content.style.flexDirection = "column";
+
+		popup.content.flexDirection = "row";
+		popup.content.innerHTML = text;
+		popup.content.style.textWrap = "auto";
+
+		const ok = button_create(popup.content);
+
+		ok.innerHTML = "Зрозуміло...";
+		ok.on_press = function() { popup.remove(); hint.overlay_disable() };
+	});
+}
+
+/************************************************
  * BMS_INFO
  ***********************************************/
 var bms_info = pane_create(document.body, "Статус батареї");
@@ -570,6 +841,11 @@ bms_info.ajax.on_recv = function(args)
 	popup.remove();
 };
 
+register_hint_dialog(bms_info,
+	"Інформація з батареї авто в реальному часі. " +
+	"Деяка інформація може бути відфільтрована та " +
+	"перезаписана за допомогою CANBOX");
+
 /************************************************
  * FILTER ERRORS
  ***********************************************/
@@ -591,13 +867,22 @@ bms_filter_errors.toolbar.checkbox.on_check = function(state)
 		bms_filter_errors.content.style.visibility = "hidden";
 	}
 }
+register_hint_dialog(bms_filter_errors.toolbar.checkbox,
+	"Це поле зазвичай вимикає цілу групу налаштувань одразу");
 
 bms_filter_errors.generic = subpane_create(bms_filter_errors.content, "Фільтрувати загальні помилки");
 bms_filter_errors.generic.checkbox = checkbox_create(bms_filter_errors.generic.content, false);
+register_hint_dialog(bms_filter_errors.generic,
+	"Дане налаштування фільтрує загальні помилки які звітує батарея.");
 
 bms_filter_errors.isolation = subpane_create(bms_filter_errors.content, "Фільтрувати помилку по ізоляції");
 bms_filter_errors.isolation.checkbox = checkbox_create(bms_filter_errors.isolation.content, false);
-
+register_hint_dialog(bms_filter_errors.isolation,
+	"Фільтрування помилки по ізоляції " +
+	"застосовується при некоректних показниках датчика " +
+	"або витоку струму на корпус, через які блокується рух автомобіля." +
+	"<p style='color: red;'>УВАГА!</p>" +
+	"У випадку реального пробою ізоляції існує РИЗИК УРАЖЕННЯ високою НАПРУГОЮ!");
 
 /************************************************
  * REGULATORS
@@ -644,6 +929,14 @@ function create_bms_regulator(parent, rmin, rmax, rstep,
 bms_regulators.recuperation_mul = create_bms_regulator(
 	bms_regulators.content, 0.0, 2.0, 0.1, 4, 5, "Множник рекуперації");
 bms_regulators.recuperation_mul.content.regulator.set_format("percentage");
+register_hint_dialog(bms_regulators.recuperation_mul,
+	"Дане налаштування фільтрує множник показника рекуперації. " +
+	"Рекуперація повертає частину енергії руху автомобіля назад в аккумулятор. " +
+	"Активно використовується під час гальмування, або ж під час руху накатом " +
+	"(Що доречі також сповільнює автомобіль).<p></p>" +
+	"Якщо встановити показник в 0%, то гальмування буде виключно механічне" +
+	" і енергія не буде повертатися назад. Також рух автомобіля " +
+	"не буде сповільнюватися через рекуперацію під час їзди накатом.");
 
 /************************************************
  * SOH MUL REGULATOR
@@ -651,25 +944,56 @@ bms_regulators.recuperation_mul.content.regulator.set_format("percentage");
 bms_regulators.soh_mul = create_bms_regulator(
 	bms_regulators.content, 0.0, 3.0, 0.1, 6, 7, "Множник SOH");
 bms_regulators.soh_mul.content.regulator.set_format("percentage");
- 
+register_hint_dialog(bms_regulators.soh_mul,
+	"Дане налаштування фільтрує множник показника здоров'я батареї (SOH). " +
+	"Коли батарея показує SOH менше 50%, то автомобіль постійно " +
+	"обмежує потужність щоб не перевантажувати батарею. " +
+	"SOH можна штучно завищувати, або занижувати щоб додатково " +
+	"впливати на цю поведінку." +
+	"<p style='color: red;'>УВАГА!</p>" +
+	"Високе навантаження при низькому SOH обов'язково " +
+	"призведе до прискореної деградації (руйнування хімії) батареї.");
+
  /************************************************
  * BATTERY NEW CAPACITY REGULATOR
  ***********************************************/
 bms_regulators.new_capacity = create_bms_regulator(
 	bms_regulators.content, 0.0, 100.0, 1, 8, 9, "Ручне встановлення повної ємн. аккум.(kWh)");
+register_hint_dialog(bms_regulators.new_capacity,
+	"Ручне встановлення ємності задає повну(заводську) ємність аккумулятора. " +
+	"Вмикайте його у випадку якщо батарея показує повну ємність некоректно. " +
+	"Або у випадку якщо увімкнений програмний лічильник заряду." +
+	"<p style='color: yellow;'>ПРИМІТКА</p>" +
+	"Програмний лічильник заряду залежить від цього значення. " +
+	"тому завжди вказуйте його відповідно тому яку ємність має ваша батарея " +
+	"по 'заводу'. Наприклад 24kWh");
 
  /************************************************
  * UBERCHARGE VOLTAGE REGULATOR
  ***********************************************/
 bms_regulators.ubercharge = create_bms_regulator(
-	bms_regulators.content, 3.2, 4.20, 0.01, 10, 11, "Дозаряд по макс. ячейці(V)");
+	bms_regulators.content, 3.2, 4.20, 0.01, 10, 11, "Дозаряд по макс. комірці(V)");
+register_hint_dialog(bms_regulators.ubercharge,
+	"Дозаряд по максимальній комірці дозволяє задати поріг напруги, до якого " +
+	"кожна комірка має заряджатися. Зазвичай по заводу це 4.10V на комірку, " +
+	"що для літій-іонних батарей далеко не верхня межа. " +
+	"Збільшення порогу дещо збільшує пробіг. " +
+	"<p style='color: red;'>УВАГА!</p>" +
+	"Збільшення порогу заряджання може призвести до прискорення деградації " +
+	"(руйнування хімії) батареї.");
 
  /************************************************
  * MAX INPUT POWER REGULATOR
  ***********************************************/
 bms_regulators.max_charge_power = create_bms_regulator(
 	bms_regulators.content, 0, 20, 0.33, 12, 13, "Обмеження потужності заряду(kWt)");
-
+register_hint_dialog(bms_regulators.max_charge_power,
+	"Дане налаштування дозволяє обмежити потужність зарядного пристрою." +
+	"Корисно якщо ваша домашня мережа не розрахована на певну потужність, " +
+	"та коли зарядний пристрій не може встановити певне обмеження, або має " +
+	"недостатню точність. Також як додатковий запобіжний захист від випадкового" +
+	"встановлення занадто високої потужності зарядного пристрою. Автомобіль не " +
+	"буде брати більше кіловат ніж встановлено у цьому полі.");
 
 /************************************************
  * EMULATORS
@@ -677,7 +1001,16 @@ bms_regulators.max_charge_power = create_bms_regulator(
 function create_kwt_counter(parent)
 {
 	const pane = subpane_create(parent.content, "Програмний лічильник заряду");
-	
+	register_hint_dialog(pane.caption,
+		"Даний лічильник рахує залишок ємності автомобіля (пробіг) у " +
+		"кіловат-годинах та автоматично розраховує SOC під час руху чи заряджання. " +
+		"Вмикайте його, якщо лічильник у самій батареї працює некоректно." +
+		"<p style='color: yellow;'>ПРИМІТКА</p>" +
+		"Дане налаштування не впливає на реальний пробіг автомобіля, а лише " +
+		"використовується для відображення показників пробігу та " +
+		"стану заряду. Також зверніть увагу на інші налаштування у " +
+		"цій секції.");
+
 	/** Enabler. */
 	const enabled = checkbox_create(pane.toolbar, true);
 	enabled.ajax.id = ID_BMS_KWT_COUNTER_ENABLED;
@@ -690,6 +1023,17 @@ function create_kwt_counter(parent)
 	const subpane = create_bms_regulator(
 		pane.content, 0, 100, 1, -1, ID_BMS_KWT_COUNTER,
 		"Встановити поточну ємність(kWh)");
+	register_hint_dialog(subpane,
+		"Вcтановлення поточної ємності для лічильника дозволяє задати " +
+		"орієнтовне значення ємності батареї у кіловат-годинах. Це впливає на " +
+		"стрілочні показники залишку пробігу та на дисплей. " +
+		"Наприклад 12kWh при повній ємності 24kWt = 50% SOH.<p></p>" +
+		"Відношення: (поточна ємність) / (повна ємність) = (стан заряду (SOC) у відсотках)." +
+		"<p style='color: yellow;'>ПРИМІТКА</p>" +
+		"Повна ємність повинна бути встановлена для коректної роботи лічильника " +
+		"та для визначення стану заряду (SOC). " +
+		"Значення показника поточної ємності також буде перераховуватися автоматично " +
+		"під час їзди, чи під час заряджання.");
 
 	/** Define set_value method for this pane object */
 	pane.set_value = subpane.content.regulator.set_value;
@@ -699,8 +1043,19 @@ function create_kwt_counter(parent)
 
 function create_fake_bms(parent)
 {
-	const pane = subpane_create(parent.content, "Емуляція батареї");
-	
+	const pane = subpane_create(parent.content, "Емуляція допоміжної BMS");
+	register_hint_dialog(pane,
+		"Зазвичай у заводській батареї стоїть 2 контролери заряду (BMS). " +
+		"При перепаковці батареї часто буває що другу (допоміжну) BMS " +
+		"не встановлюють і автомобіль може стати у помилку. " +
+		"Дане налаштування дозволяє 'відтворити' роботу цієї BMS так, " +
+		"що автомобіль не помітить її відсутності. Таким чином пов'язані " +
+		"помилки вилікуються.<p style='color: yellow;'>ПРИМІТКА</p>" +
+		"Це налаштування не дає ніякого ефекту у випадку, якщо друга BMS " +
+		"присутня, і не впливає на роботу другої BMS. Тому " +
+		"воно може бути увімкнене весь час по замовчуванню.",
+		);
+
 	/** Enabler. */
 	const enabled = checkbox_create(pane.toolbar, true);
 	enabled.ajax.id = ID_BMS_FAKE_BMS_ENABLED;
@@ -753,6 +1108,14 @@ disable_wifi.button.on_press = function()
 	const no = button_create(popup.content, "Ні");
 	no.on_press = function() { popup.remove(); }
 }
+register_hint_dialog(disable_wifi,
+	"Вимкнення Wi-Fi дозволяє заощадити електроенергію, яку споживає CANBOX. " +
+	"Також попереджує зміну налаштувань іншими користувачами. " +
+	"Рекомендується вимикати Wi-Fi після встановлення налаштувань." +
+	"<p style='color: yellow;'>ПРИМІТКА</p>" +
+	"Wi-Fi автоматично вимикається через кілька хвилин відсутності актикності. " +
+	"Для повторного увімкнення поверніть ключ запалювання 3 рази з інтервалом у півсекунди, " +
+	"або перезавантажте живлення.");
 
 /************************************************
  * RESET ESP
@@ -773,6 +1136,8 @@ reload_canbox.button.on_press = function()
 	const no = button_create(popup.content, "Ні");
 	no.on_press = function() { popup.remove(); }
 }
+register_hint_dialog(reload_canbox,
+	"Програмно перезавантажує CANBOX.");
 
 /************************************************
  * DROP SETTINGS
@@ -807,7 +1172,13 @@ update_firmware.content.innerHTML = '\
 		@ENV:TARGET: @ENV:__CAN_FILTER_VERSION__<input type= "file" class = "layout" id= "file" name= "file">\
 		<button class = "button">Підтвердити</button>\
 	</form>'
-
+register_hint_dialog(update_firmware,
+	"Дозволяє завантажити прошивку CANBOX у форматі .bin " +
+	"Цей метод вважається застарілим, але найбільш надійним, коли " +
+	"Інші методи прошивки через повітря не працюють." +
+	"<p style='color: yellow;'>ПРИМІТКА</p>" +
+	"Вихідний код проекту доступний за адресою: " +
+	"<a href='https://github.com/furdog/kangoo_can_filter'>https://github.com/furdog/kangoo_can_filter</a>");
 
 /************************************************
  * INIT
