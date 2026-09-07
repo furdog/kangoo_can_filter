@@ -6,41 +6,33 @@ This is repository contains esp32(arduino) version of ElektroBOX can filtering s
 
 The project is not properly documented at the moment. May change in the future.
 
-# TODO
-- disable leds if wifi is off
+## CHANGELOG
+> v2.13.0
 
-# Testing
-(can filter v3)
+- Added proper CHANGELOG and implementationg notes and TODO.
+- Scaled percentage ratios 100x inside input fields for user сonvenience.
+- Remaining capacity doesn't need manual confirmation button now (caused confusion).
+- Added hint dialogs, very crucial for new users.
 
-D19: pulses
-- vmax: `4.3`
-- vmin: `0.2`
+## TODO
+> Since 07.09.2026 (short term tasks)
+- Language selection badge in the top right corner of screen, similar to hint tools.
+- Automatic language selection && language saved between sessions.
+- CAN FILTER Hardware revision selection option. So there are no longer hardware variants necessary.
 
-D18: pulses
-- vmax: `3.6`
-- vmin: `0.2`
+> Since 07.09.2026 (long term tasks)
+- Automated hardware revision selection
+- Service mode to manually edit hardware layout (pinout && features)
+- Refactor. Make CAN FILTER fully hardware agnostic and compliant with MISRA requirements
+- Provide automated tests
+- Generic CAN FILTER interface for more cars and not only kangoo (unify projects)
+- Protobuf for websocket communication and dynamic web interface generation.
+- Migrate to ESP-IDF or other platforms
 
-D15: pulses
-- vmax: `4.13`
-- vmin: `0.2`
+## Implementation notes
+> 07.09.2026
 
-D14: pulses
-- vmax: `3.7`
-- vmin: `0.2`
+From this moment i start to document all the implementation details and further notes.
+I will add additional sections as needed to explain architectural decisions, etc.
 
-tja1030 left: (top right pin is 1)
-pin1: `3.6 pulses : tx`
-pin2: `0.0 : gnd`
-pin3: `5.3 : vcc`
-pin4: `5.2 pulses : rx` (`-> R=1kom -> D19`)
-pin5: `3.6 : vref`
-pin6: `??? pulses: canl`
-pin7: `??? pulses: canh`
-pin8: `0.0 : s`
-
-tja1030 right: (down left pin is 1)
-...
-pin3: `5.3 : vcc`
-pin5: `3.6 : vref`
-...
-pin4: `5.2 pulses : rx` (`-> R=1kom -> D15`)
+For now i'll try to write changelog and todos as the first step to proper documentation.
