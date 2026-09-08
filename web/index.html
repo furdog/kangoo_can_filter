@@ -653,7 +653,7 @@ function regulator_create(parent, rmin, rmax, rstep, orient)
 	};
 	
 	text.onclick = function() {
-		const popup = popup_create(document.body, "Ввести значення");
+		const popup = popup_create(document.body, tr("LC_ENTER_VALUE"));
 
 		let mul = (layout.format == 'percentage' ? 100 : 1);
 
@@ -664,7 +664,7 @@ function regulator_create(parent, rmin, rmax, rstep, orient)
 		field.max = rmax * mul;
 		field.step = rstep * mul;
 	
-		const button = button_create(popup.content, "Встановити");
+		const button = button_create(popup.content, tr("LC_SET"));
 		button.on_press = function() {
 			layout.set_value(field.value / mul);
 			layout.ajax.send([layout.value.toFixed(digits)]);
@@ -771,7 +771,7 @@ const badge = hint.badge_create(document.body);
 
 function register_hint_dialog(parent, text) {
 	hint.register(parent, function() {
-		const popup = popup_create(document.body, "Підказка");
+		const popup = popup_create(document.body, tr("LC_HINT_TITLE"));
 		popup.content.style.flexDirection = "column";
 
 		popup.content.flexDirection = "row";
@@ -780,15 +780,197 @@ function register_hint_dialog(parent, text) {
 
 		const ok = button_create(popup.content);
 
-		ok.innerHTML = "Зрозуміло...";
+		ok.innerHTML = tr("LC_UNDERSTOOD");
 		ok.on_press = function() { popup.remove(); hint.overlay_disable() };
 	});
 }
 
 /************************************************
+ * LOCALE IMPLEMENTATION
+ ***********************************************/
+const LANG_EN = {
+    "LC_CHANGE_LANGUAGE": "Change language",
+    "LC_BATTERY_STATUS": "Battery Status",
+    "LC_SOH_VALUE": "SOH Value: ",
+    "LC_VOLTAGE": "Voltage: ",
+    "LC_SOC": "Charge: ",
+    "LC_CURRENT": "Current: ",
+    "LC_TEMPERATURE": "Temperature: ",
+    "LC_MAX_INPUT": "Max Input: ",
+    "LC_MIN_CELL": "Min Cell: ",
+    "LC_MAX_CELL": "Max: ",
+    "LC_CAPACITY": "Capacity: ",
+    "LC_MAX_CAPACITY": "Max: ",
+    "LC_RECUPERATION": "Recuperation: ",
+    "LC_FS_CORRUPTED_TITLE": "File System Corrupted",
+    "LC_HINT_BATTERY_STATUS": "Real-time vehicle battery information. Some fields may be filtered and overwritten by the CAN filter (CANBOX).",
+    "LC_ERRORS": "Errors",
+    "LC_HINT_GROUP_DISABLE": "This field usually disables an entire group of settings at once.",
+    "LC_FILTER_GENERAL_ERRORS": "Filter General Errors",
+    "LC_HINT_FILTER_GENERAL_ERRORS": "This setting filters general errors reported by the battery.",
+    "LC_FILTER_ISOLATION_ERRORS": "Filter Isolation Error",
+    "LC_HINT_FILTER_ISOLATION_ERRORS": "Isolation error filtering is used in case of incorrect sensor readings or current leakage to the chassis that prevent the vehicle from moving.<p style='color: red;'>WARNING!</p>In the event of an actual isolation breach, there is a RISK OF HIGH VOLTAGE ELECTRIC SHOCK!",
+    "LC_REGULATION": "Regulation",
+    "LC_RECUPERATION_MULTIPLIER": "Recuperation Multiplier",
+    "LC_HINT_RECUPERATION_MULTIPLIER": "This setting filters the recuperation rate multiplier. Recuperation recovers part of the vehicle's kinetic energy back into the battery. It is actively used during braking or coasting (which also slows the vehicle down).<p style='color: yellow;'>NOTE</p>If set to 0%, braking will be purely mechanical and no energy will be recovered. The vehicle will also not slow down via recuperation while coasting.",
+    "LC_SOH_MULTIPLIER": "SOH Multiplier",
+    "LC_HINT_SOH_MULTIPLIER": "This setting filters the battery State of Health (SOH) multiplier. When the battery reports an SOH below 50%, the vehicle limits power to prevent overloading the battery. SOH can be artificially inflated or reduced to influence this behavior.<p style='color: red;'>WARNING!</p>High loads at low SOH will lead to accelerated degradation (chemical breakdown) of the battery cells.",
+    "LC_SET_FULL_CAPACITY": "Manual Full Battery Capacity (kWh)",
+    "LC_HINT_SET_FULL_CAPACITY": "Manually setting the capacity specifies the full (factory) battery capacity. Enable this if the battery displays its full capacity incorrectly, or if the software charge counter is enabled.<p style='color: yellow;'>NOTE</p>The software charge counter depends on this value, so always set it according to your battery's factory capacity. For example, 24kWh.",
+    "LC_UBERCHARGE_CELL_VOLTAGE": "Top-up Charge by Max Cell (V)",
+    "LC_HINT_UBERCHARGE_CELL_VOLTAGE": "Top-up charging by maximum cell allows setting the voltage threshold to which each cell should charge. Factory default is typically 4.10V per cell, which is well below the upper limit for lithium-ion batteries. Increasing this threshold slightly increases range.<p style='color: red;'>WARNING!</p>Increasing the charge threshold may lead to accelerated degradation (chemical breakdown) of the battery cells.",
+    "LC_LIMIT_CHARGE_POWER": "Charge Power Limit (kWt)",
+    "LC_HINT_LIMIT_CHARGE_POWER": "This setting allows limiting the charger power. Useful if your home grid cannot handle high power, or when the charger cannot set a specific limit or lacks accuracy. It also acts as an extra safeguard against accidentally setting excessive charger power. The vehicle will not draw more kilowatts than specified in this field.",
+    "LC_EMULATION": "Emulation",
+    "LC_KWT_COUNTER": "Software Charge Counter",
+    "LC_HINT_KWT_COUNTER": "This counter calculates the remaining capacity (range) in kilowatt-hours and automatically estimates SOC while driving or charging. Enable this if the battery's internal counter functions incorrectly.<p style='color: yellow;'>NOTE</p>This setting does not affect actual driving range; it is only used to display range and state-of-charge metrics. Please review other settings in this section as well.",
+    "LC_SET_CURRENT_CAPACITY": "Set Current Capacity (kWh)",
+    "LC_HINT_SET_CURRENT_CAPACITY": "Setting the current capacity for the counter allows specifying an estimated battery capacity in kilowatt-hours. This affects the analog gauge indicators and display readings. For example, 12kWh with a full capacity of 24kWt = 50% SOH.<p></p>Ratio: (current capacity) / (full capacity) = (state of charge (SOC) percentage).<p style='color: yellow;'>NOTE</p>Full capacity must be set for the counter to work correctly and calculate SOC. The current capacity value will recalculate automatically while driving or charging.",
+    "LC_FAKE_BMS": "Auxiliary BMS Emulation",
+    "LC_HINT_FAKE_BMS": "Factory batteries usually contain 2 Battery Management Systems (BMS). During battery repacks, the second (auxiliary) BMS is often omitted, causing the vehicle to throw an error. This setting emulates the auxiliary BMS so the vehicle operates normally.<p style='color: yellow;'>NOTE</p>This setting has no effect if the second BMS is present and does not interfere with its operation. Therefore, it can remain enabled by default.",
+    "LC_ADDITIONAL": "Additional",
+    "LC_DISABLE_WIFI": "Disable Wi-Fi",
+    "LC_DISABLE_WIFI_CONFIRM": "Do you want to disable Wi-Fi?",
+    "LC_HINT_DISABLE_WIFI": "Disabling Wi-Fi reduces CANBOX power consumption and prevents unauthorized setting changes. It is recommended to turn off Wi-Fi after completing configuration.<p style='color: yellow;'>NOTE</p>Wi-Fi turns off automatically after several minutes of inactivity. To re-enable it, cycle the ignition key 3 times at half-second intervals, or restart power.",
+    "LC_RELOAD_CANBOX": "Reboot CanBox",
+    "LC_RELOAD_CANBOX_CONFIRM": "Do you want to reboot CanBox?",
+    "LC_HINT_RELOAD_CANBOX": "Restarts CANBOX via software.",
+    "LC_UPDATE_FIRMWARE": "Firmware Update",
+    "LC_HINT_UPDATE_FIRMWARE": "Allows uploading CANBOX firmware in .bin format. This method is considered legacy, but it is the most reliable when over-the-air updates fail.<p style='color: yellow;'>NOTE</p>Project source code is available at: <a href='https://github.com/furdog/kangoo_can_filter'>https://github.com/furdog/kangoo_can_filter</a>",
+    "LC_LOADING": "Loading",
+    "LC_ENTER_VALUE": "Enter Value",
+    "LC_SET": "Set",
+    "LC_HINT_TITLE": "Hint",
+    "LC_UNDERSTOOD": "Understood...",
+    "LC_UNDERSTOOD_BTN": "Understood",
+    "LC_CONFIRM_BTN": "Confirm",
+    "LC_YES": "Yes",
+    "LC_NO": "No"
+}
+
+const LANG_UK = {
+    "LC_CHANGE_LANGUAGE": "Змінити мову",
+    "LC_BATTERY_STATUS": "Статус батареї",
+    "LC_SOH_VALUE": "Значення SOH: ",
+    "LC_VOLTAGE": "Напруга: ",
+    "LC_SOC": "Заряд: ",
+    "LC_CURRENT": "Cтрум: ",
+    "LC_TEMPERATURE": "Температура: ",
+    "LC_MAX_INPUT": "Макс. вхід: ",
+    "LC_MIN_CELL": "Мін. ячей: ",
+    "LC_MAX_CELL": "Макс: ",
+    "LC_CAPACITY": "Ємність: ",
+    "LC_MAX_CAPACITY": "Макс: ",
+    "LC_RECUPERATION": "Рекуперація: ",
+    "LC_FS_CORRUPTED_TITLE": "Файлова система несправна",
+    "LC_HINT_BATTERY_STATUS": "Інформація з батареї автомобіля в реальному часі. Деякі поля можуть бути відфільтровані та перезаписані CAN-фільтром (CANBOX).",
+    "LC_ERRORS": "Помилки",
+    "LC_HINT_GROUP_DISABLE": "Це поле зазвичай вимикає цілу групу налаштувань одразу.",
+    "LC_FILTER_GENERAL_ERRORS": "Фільтрувати загальні помилки",
+    "LC_HINT_FILTER_GENERAL_ERRORS": "Дане налаштування фільтрує загальні помилки, які звітує батарея.",
+    "LC_FILTER_ISOLATION_ERRORS": "Фільтрувати помилку по ізоляції",
+    "LC_HINT_FILTER_ISOLATION_ERRORS": "Фільтрування помилки по ізоляції застосовується при некоректних показниках датчика, або витоку струму на корпус, через які блокується рух автомобіля.<p style='color: red;'>УВАГА!</p>У випадку реального пробою ізоляції існує РИЗИК УРАЖЕННЯ високою НАПРУГОЮ!",
+    "LC_REGULATION": "Регулювання",
+    "LC_RECUPERATION_MULTIPLIER": "Множник рекуперації",
+    "LC_HINT_RECUPERATION_MULTIPLIER": "Дане налаштування фільтрує множник показника рекуперації. Рекуперація повертає частину енергії руху автомобіля назад в аккумулятор. Активно використовується під час гальмування, або ж під час руху накатом (Що доречі також сповільнює автомобіль).<p style='color: yellow;'>ПРИМІТКА</p>Якщо встановити показник в 0%, то гальмування буде виключно механічне і енергія не буде повертатися назад. Також рух автомобіля не буде сповільнюватися через рекуперацію під час їзди накатом.",
+    "LC_SOH_MULTIPLIER": "Множник SOH",
+    "LC_HINT_SOH_MULTIPLIER": "Дане налаштування фільтрує множник показника здоров'я батареї (SOH). Коли батарея показує SOH менше 50%, то автомобіль обмежує потужність щоб не перевантажувати батарею. SOH можна штучно завищувати, або занижувати, щоб додатково впливати на цю поведінку.<p style='color: red;'>УВАГА!</p>Високе навантаження при низькому SOH обов'язково призведе до прискореної деградації (руйнування хімії) комірок батареї.",
+    "LC_SET_FULL_CAPACITY": "Ручне встановлення повної ємн. аккум.(kWh)",
+    "LC_HINT_SET_FULL_CAPACITY": "Ручне встановлення ємності задає повну(заводську) ємність аккумулятора. Вмикайте його у випадку якщо батарея показує повну ємність некоректно. Або у випадку якщо увімкнений програмний лічильник заряду.<p style='color: yellow;'>ПРИМІТКА</p>Програмний лічильник заряду залежить від цього значення. тому завжди вказуйте його відповідно тому яку ємність має ваша батарея по 'заводу'. Наприклад 24kWh.",
+    "LC_UBERCHARGE_CELL_VOLTAGE": "Дозаряд по макс. комірці(V)",
+    "LC_HINT_UBERCHARGE_CELL_VOLTAGE": "Дозаряд по максимальній комірці дозволяє задати поріг напруги, до якого кожна комірка має заряджатися. Зазвичай по заводу це 4.10V на комірку, що для літій-іонних батарей далеко не верхня межа. Збільшення порогу дещо збільшує пробіг. <p style='color: red;'>УВАГА!</p>Збільшення порогу заряджання може призвести до прискорення деградації (руйнування хімії) комірох батареї.",
+    "LC_LIMIT_CHARGE_POWER": "Обмеження потужності заряду(kWt)",
+    "LC_HINT_LIMIT_CHARGE_POWER": "Дане налаштування дозволяє обмежити потужність зарядного пристрою. Корисно якщо ваша домашня мережа не розрахована на певну потужність, та коли зарядний пристрій не може встановити певне обмеження, або має недостатню точність. Також як додатковий запобіжний захист від випадкового встановлення занадто високої потужності зарядного пристрою. Автомобіль не буде брати більше кіловат ніж встановлено у цьому полі.",
+    "LC_EMULATION": "Емуляція",
+    "LC_KWT_COUNTER": "Програмний лічильник заряду",
+    "LC_HINT_KWT_COUNTER": "Даний лічильник рахує залишок ємності автомобіля (пробіг) у кіловат-годинах та автоматично розраховує SOC під час руху чи заряджання. Вмикайте його, якщо лічильник у самій батареї працює некоректно.<p style='color: yellow;'>ПРИМІТКА</p>Дане налаштування не впливає на реальний пробіг автомобіля, а лише використовується для відображення показників пробігу та стану заряду. Також зверніть увагу на інші налаштування у цій секції.",
+    "LC_SET_CURRENT_CAPACITY": "Встановити поточну ємність(kWh)",
+    "LC_HINT_SET_CURRENT_CAPACITY": "Вcтановлення поточної ємності для лічильника дозволяє задати орієнтовне значення ємності батареї у кіловат-годинах. Це впливає на стрілочні показники залишку пробігу та на дисплей. Наприклад 12kWh при повній ємності 24kWt = 50% SOH.<p></p>Відношення: (поточна ємність) / (повна ємність) = (стан заряду (SOC) у відсотках).<p style='color: yellow;'>ПРИМІТКА</p>Повна ємність повинна бути встановлена для коректної роботи лічильника та для визначення стану заряду (SOC). Значення показника поточної ємності також буде перераховуватися автоматично під час їзди, чи під час заряджання.",
+    "LC_FAKE_BMS": "Емуляція допоміжної BMS",
+    "LC_HINT_FAKE_BMS": "Зазвичай у заводській батареї стоїть 2 контролери заряду (BMS). При перепаковці батареї часто буває що другу (допоміжну) BMS не встановлюють і автомобіль може стати у помилку. Дане налаштування дозволяє 'відтворити' роботу цієї BMS так, що автомобіль не помітить її відсутності. Таким чином пов'язані помилки вилікуються.<p style='color: yellow;'>ПРИМІТКА</p>Це налаштування не дає ніякого ефекту у випадку, якщо друга BMS присутня, і не впливає на роботу другої BMS. Тому воно може бути увімкнене весь час по замовчуванню.",
+    "LC_ADDITIONAL": "Додатково",
+    "LC_DISABLE_WIFI": "Вимкнути Wi-Fi",
+    "LC_DISABLE_WIFI_CONFIRM": "Бажаєте вимкнути Wi-Fi?",
+    "LC_HINT_DISABLE_WIFI": "Вимкнення Wi-Fi дозволяє заощадити електроенергію, яку споживає CANBOX. Також попереджує зміну налаштувань іншими користувачами. Рекомендується вимикати Wi-Fi після встановлення налаштувань.<p style='color: yellow;'>ПРИМІТКА</p>Wi-Fi автоматично вимикається через кілька хвилин відсутності актикності. Для повторного увімкнення поверніть ключ запалювання 3 рази з інтервалом у півсекунди, або перезавантажте живлення.",
+    "LC_RELOAD_CANBOX": "Перезавантажити CanBox",
+    "LC_RELOAD_CANBOX_CONFIRM": "Бажаєте перезавантажити CanBox?",
+    "LC_HINT_RELOAD_CANBOX": "Програмно перезавантажує CANBOX.",
+    "LC_UPDATE_FIRMWARE": "Оновленя прошивки",
+    "LC_HINT_UPDATE_FIRMWARE": "Дозволяє завантажити прошивку CANBOX у форматі .bin Цей метод вважається застарілим, але найбільш надійним, коли Інші методи прошивки через повітря не працюють.<p style='color: yellow;'>ПРИМІТКА</p>Вихідний код проекту доступний за адресою: <a href='https://github.com/furdog/kangoo_can_filter'>https://github.com/furdog/kangoo_can_filter</a>",
+    "LC_LOADING": "Завантаження",
+    "LC_ENTER_VALUE": "Ввести значення",
+    "LC_SET": "Встановити",
+    "LC_HINT_TITLE": "Підказка",
+    "LC_UNDERSTOOD": "Зрозуміло...",
+    "LC_UNDERSTOOD_BTN": "Зрозуміло",
+    "LC_CONFIRM_BTN": "Підтвердити",
+    "LC_YES": "Так",
+    "LC_NO": "Ні"
+}
+
+/* Find browser language */
+let browser_language = navigator.language || navigator.userLanguage;
+
+/* Language in storage has higher priority */
+const stored_language = localStorage.getItem('userLanguage');
+
+/* Restore language from previous session */
+if (stored_language) {
+	console.log("Used language from previous session: " +
+		    stored_language);
+	browser_language = stored_language;
+}
+
+/* Select language from valid languages */
+if (browser_language.startsWith('en')) {
+	browser_language = 'en';
+	LANG = LANG_EN;
+	console.log("User language seems to be English");
+} else if (browser_language.startsWith('uk')) {
+	browser_language = 'uk';
+	LANG = LANG_UK;
+	console.log("User language seems to be Ukrainian")
+} else {
+	browser_language = 'en';
+	LANG = LANG_EN;
+	console.log("User language is not recognised (defaults to english)");
+}
+
+/** Hardcoded language badge */
+language_badge = document.createElement("div");
+language_badge.classList.add("hint_custom", "hint_badge");
+language_badge.innerHTML = tr("LC_CHANGE_LANGUAGE");
+language_badge.style.right = "unset";
+language_badge.style.left = "0em";
+language_badge.style.fontSize = "1em";
+document.body.appendChild(language_badge);
+
+language_badge.onclick = () => {
+	if (browser_language == "en") {
+		localStorage.setItem('userLanguage', 'uk');
+	} else {
+		localStorage.setItem('userLanguage', 'en');
+	}
+
+	window.location.reload();
+}
+
+function tr(key, ...args) {
+	let text = (LANG && LANG[key]) ? LANG[key] : key;
+
+	if (args.length === 0) return text;
+
+	args.forEach((arg, i) => {
+		text = text.replace(`%${i + 1}`, arg);
+	});
+
+	return text;
+}
+
+/************************************************
  * BMS_INFO
  ***********************************************/
-var bms_info = pane_create(document.body, "Статус батареї");
+var bms_info = pane_create(document.body, tr("LC_BATTERY_STATUS"));
 
 l0 = layout_create(bms_info.content, "v");
 l0.style.flex = "1";
@@ -814,26 +996,26 @@ bms_info.ajax.id = 0;
 bms_info.ajax.interval = 2500;
 bms_info.ajax.on_recv = function(args)
 {
-	bms_info.soh.innerHTML = "Значення SOH: " + args[0] + "%";
-	bms_info.voltage.innerHTML = "Напруга: " + args[1] + "V";
-	bms_info.soc.innerHTML = "Заряд: " + args[2] + "%";
-	bms_info.current.innerHTML = "Cтрум: " + args[3] + "A";
-	bms_info.temp.innerHTML = "Температура: " + args[4] + "C";
-	bms_info.max_current.innerHTML = "Макс. вхід: " + args[5] + "kWt";
-	bms_info.min_cell.innerHTML = "Мін. ячей: " + args[6] + "V";
-	bms_info.max_cell.innerHTML = "Макс: " + args[7] + "V (d=" + parseFloat(args[7] - args[6]).toFixed(3) + ")";
+	bms_info.soh.innerHTML = tr("LC_SOH_VALUE") + args[0] + "%";
+	bms_info.voltage.innerHTML = tr("LC_VOLTAGE") + args[1] + "V";
+	bms_info.soc.innerHTML = tr("LC_SOC") + args[2] + "%";
+	bms_info.current.innerHTML = tr("LC_CURRENT") + args[3] + "A";
+	bms_info.temp.innerHTML = tr("LC_TEMPERATURE") + args[4] + "C";
+	bms_info.max_current.innerHTML = tr("LC_MAX_INPUT") + args[5] + "kWt";
+	bms_info.min_cell.innerHTML = tr("LC_MIN_CELL") + args[6] + "V";
+	bms_info.max_cell.innerHTML = tr("LC_MAX_CELL") + args[7] + "V (d=" + parseFloat(args[7] - args[6]).toFixed(3) + ")";
 	
 	const kwh = parseFloat(args[8]).toFixed(1) + "kWh (" + parseFloat(args[8] * 1000 / 96 / 3.6).toFixed(1);
 	/** May divide by zero. */
 	const kwh_max_mul = args[8] * (100 / args[2]);
 	const kwh_max = kwh_max_mul.toFixed(1) + "kWh (" + parseFloat(kwh_max_mul * 1000 / 96 / 3.6).toFixed(1);
-	bms_info.capacity.innerHTML = "Ємність: " + kwh + "aH)";
-	bms_info.max_capacity.innerHTML = "Макс: " + kwh_max + "aH)";
-	bms_info.recu.innerHTML = "Рекуперація: " + args[9] + "kWt";
+	bms_info.capacity.innerHTML = tr("LC_CAPACITY") + kwh + "aH)";
+	bms_info.max_capacity.innerHTML = tr("LC_MAX_CAPACITY") + kwh_max + "aH)";
+	bms_info.recu.innerHTML = tr("LC_RECUPERATION") + args[9] + "kWt";
 	
 	if (check_fs_corruption && args[10]) {
-		const fs_corrupted = popup_create(document.body, "Файлова система несправна");
-		const ok = button_create(fs_corrupted.content, "Зрозуміло");
+		const fs_corrupted = popup_create(document.body, tr("LC_FS_CORRUPTED_TITLE"));
+		const ok = button_create(fs_corrupted.content, tr("LC_UNDERSTOOD_BTN"));
 		ok.on_press = function() { fs_corrupted.remove(); }
 		check_fs_corruption = false;
 	}
@@ -841,15 +1023,12 @@ bms_info.ajax.on_recv = function(args)
 	popup.remove();
 };
 
-register_hint_dialog(bms_info,
-	"Інформація з батареї автомобіля в реальному часі. " +
-	"Деякі поля можуть бути відфільтровані та " +
-	"перезаписані CAN-фільтром (CANBOX).");
+register_hint_dialog(bms_info, tr("LC_HINT_BATTERY_STATUS"));
 
 /************************************************
  * FILTER ERRORS
  ***********************************************/
-const bms_filter_errors = pane_create(document.body, "Помилки");
+const bms_filter_errors = pane_create(document.body, tr("LC_ERRORS"));
 bms_filter_errors.content.style.visibility = "hidden";
 
 bms_filter_errors.toolbar.checkbox = checkbox_create(bms_filter_errors.toolbar, false);
@@ -867,27 +1046,20 @@ bms_filter_errors.toolbar.checkbox.on_check = function(state)
 		bms_filter_errors.content.style.visibility = "hidden";
 	}
 }
-register_hint_dialog(bms_filter_errors.toolbar.checkbox,
-	"Це поле зазвичай вимикає цілу групу налаштувань одразу.");
+register_hint_dialog(bms_filter_errors.toolbar.checkbox, tr("LC_HINT_GROUP_DISABLE"));
 
-bms_filter_errors.generic = subpane_create(bms_filter_errors.content, "Фільтрувати загальні помилки");
+bms_filter_errors.generic = subpane_create(bms_filter_errors.content, tr("LC_FILTER_GENERAL_ERRORS"));
 bms_filter_errors.generic.checkbox = checkbox_create(bms_filter_errors.generic.content, false);
-register_hint_dialog(bms_filter_errors.generic,
-	"Дане налаштування фільтрує загальні помилки, які звітує батарея.");
+register_hint_dialog(bms_filter_errors.generic, tr("LC_HINT_FILTER_GENERAL_ERRORS"));
 
-bms_filter_errors.isolation = subpane_create(bms_filter_errors.content, "Фільтрувати помилку по ізоляції");
+bms_filter_errors.isolation = subpane_create(bms_filter_errors.content, tr("LC_FILTER_ISOLATION_ERRORS"));
 bms_filter_errors.isolation.checkbox = checkbox_create(bms_filter_errors.isolation.content, false);
-register_hint_dialog(bms_filter_errors.isolation,
-	"Фільтрування помилки по ізоляції " +
-	"застосовується при некоректних показниках датчика, " +
-	"або витоку струму на корпус, через які блокується рух автомобіля." +
-	"<p style='color: red;'>УВАГА!</p>" +
-	"У випадку реального пробою ізоляції існує РИЗИК УРАЖЕННЯ високою НАПРУГОЮ!");
+register_hint_dialog(bms_filter_errors.isolation, tr("LC_HINT_FILTER_ISOLATION_ERRORS"));
 
 /************************************************
  * REGULATORS
  ***********************************************/
-const bms_regulators = pane_create(document.body, "Регулювання");
+const bms_regulators = pane_create(document.body, tr("LC_REGULATION"));
 //bms_regulators.content.style.visibility = "hidden";
 
 function create_bms_regulator(parent, rmin, rmax, rstep,
@@ -927,90 +1099,46 @@ function create_bms_regulator(parent, rmin, rmax, rstep,
  * RECUPERATION MUL REGULATOR
  ***********************************************/
 bms_regulators.recuperation_mul = create_bms_regulator(
-	bms_regulators.content, 0.0, 2.0, 0.1, 4, 5, "Множник рекуперації");
+	bms_regulators.content, 0.0, 2.0, 0.1, 4, 5, tr("LC_RECUPERATION_MULTIPLIER"));
 bms_regulators.recuperation_mul.content.regulator.set_format("percentage");
-register_hint_dialog(bms_regulators.recuperation_mul,
-	"Дане налаштування фільтрує множник показника рекуперації. " +
-	"Рекуперація повертає частину енергії руху автомобіля назад в аккумулятор. " +
-	"Активно використовується під час гальмування, або ж під час руху накатом " +
-	"(Що доречі також сповільнює автомобіль)." +
-	"<p style='color: yellow;'>ПРИМІТКА</p>" +
-	"Якщо встановити показник в 0%, то гальмування буде виключно механічне " +
-	"і енергія не буде повертатися назад. Також рух автомобіля " +
-	"не буде сповільнюватися через рекуперацію під час їзди накатом.");
+register_hint_dialog(bms_regulators.recuperation_mul, tr("LC_HINT_RECUPERATION_MULTIPLIER"));
 
 /************************************************
  * SOH MUL REGULATOR
  ***********************************************/
 bms_regulators.soh_mul = create_bms_regulator(
-	bms_regulators.content, 0.0, 3.0, 0.1, 6, 7, "Множник SOH");
+	bms_regulators.content, 0.0, 3.0, 0.1, 6, 7, tr("LC_SOH_MULTIPLIER"));
 bms_regulators.soh_mul.content.regulator.set_format("percentage");
-register_hint_dialog(bms_regulators.soh_mul,
-	"Дане налаштування фільтрує множник показника здоров'я батареї (SOH). " +
-	"Коли батарея показує SOH менше 50%, то автомобіль " +
-	"обмежує потужність щоб не перевантажувати батарею. " +
-	"SOH можна штучно завищувати, або занижувати, щоб додатково " +
-	"впливати на цю поведінку." +
-	"<p style='color: red;'>УВАГА!</p>" +
-	"Високе навантаження при низькому SOH обов'язково " +
-	"призведе до прискореної деградації (руйнування хімії) комірок батареї.");
+register_hint_dialog(bms_regulators.soh_mul, tr("LC_HINT_SOH_MULTIPLIER"));
 
  /************************************************
  * BATTERY NEW CAPACITY REGULATOR
  ***********************************************/
 bms_regulators.new_capacity = create_bms_regulator(
-	bms_regulators.content, 0.0, 100.0, 1, 8, 9, "Ручне встановлення повної ємн. аккум.(kWh)");
-register_hint_dialog(bms_regulators.new_capacity,
-	"Ручне встановлення ємності задає повну(заводську) ємність аккумулятора. " +
-	"Вмикайте його у випадку якщо батарея показує повну ємність некоректно. " +
-	"Або у випадку якщо увімкнений програмний лічильник заряду." +
-	"<p style='color: yellow;'>ПРИМІТКА</p>" +
-	"Програмний лічильник заряду залежить від цього значення. " +
-	"тому завжди вказуйте його відповідно тому яку ємність має ваша батарея " +
-	"по 'заводу'. Наприклад 24kWh.");
+	bms_regulators.content, 0.0, 100.0, 1, 8, 9, tr("LC_SET_FULL_CAPACITY"));
+register_hint_dialog(bms_regulators.new_capacity, tr("LC_HINT_SET_FULL_CAPACITY"));
 
  /************************************************
  * UBERCHARGE VOLTAGE REGULATOR
  ***********************************************/
 bms_regulators.ubercharge = create_bms_regulator(
-	bms_regulators.content, 3.2, 4.20, 0.01, 10, 11, "Дозаряд по макс. комірці(V)");
-register_hint_dialog(bms_regulators.ubercharge,
-	"Дозаряд по максимальній комірці дозволяє задати поріг напруги, до якого " +
-	"кожна комірка має заряджатися. Зазвичай по заводу це 4.10V на комірку, " +
-	"що для літій-іонних батарей далеко не верхня межа. " +
-	"Збільшення порогу дещо збільшує пробіг. " +
-	"<p style='color: red;'>УВАГА!</p>" +
-	"Збільшення порогу заряджання може призвести до прискорення деградації " +
-	"(руйнування хімії) комірох батареї.");
+	bms_regulators.content, 3.2, 4.20, 0.01, 10, 11, tr("LC_UBERCHARGE_CELL_VOLTAGE"));
+register_hint_dialog(bms_regulators.ubercharge, tr("LC_HINT_UBERCHARGE_CELL_VOLTAGE"));
 
  /************************************************
  * MAX INPUT POWER REGULATOR
  ***********************************************/
 bms_regulators.max_charge_power = create_bms_regulator(
-	bms_regulators.content, 0, 20, 0.33, 12, 13, "Обмеження потужності заряду(kWt)");
-register_hint_dialog(bms_regulators.max_charge_power,
-	"Дане налаштування дозволяє обмежити потужність зарядного пристрою. " +
-	"Корисно якщо ваша домашня мережа не розрахована на певну потужність, " +
-	"та коли зарядний пристрій не може встановити певне обмеження, або має " +
-	"недостатню точність. Також як додатковий запобіжний захист від випадкового " +
-	"встановлення занадто високої потужності зарядного пристрою. Автомобіль не " +
-	"буде брати більше кіловат ніж встановлено у цьому полі.");
+	bms_regulators.content, 0, 20, 0.33, 12, 13, tr("LC_LIMIT_CHARGE_POWER"));
+register_hint_dialog(bms_regulators.max_charge_power, tr("LC_HINT_LIMIT_CHARGE_POWER"));
 
 /************************************************
  * EMULATORS
  ***********************************************/
 function create_kwt_counter(parent)
 {
-	const pane = subpane_create(parent.content, "Програмний лічильник заряду");
-	register_hint_dialog(pane.caption,
-		"Даний лічильник рахує залишок ємності автомобіля (пробіг) у " +
-		"кіловат-годинах та автоматично розраховує SOC під час руху чи заряджання. " +
-		"Вмикайте його, якщо лічильник у самій батареї працює некоректно." +
-		"<p style='color: yellow;'>ПРИМІТКА</p>" +
-		"Дане налаштування не впливає на реальний пробіг автомобіля, а лише " +
-		"використовується для відображення показників пробігу та " +
-		"стану заряду. Також зверніть увагу на інші налаштування у " +
-		"цій секції.");
+	const pane = subpane_create(parent.content, tr("LC_KWT_COUNTER"));
+	register_hint_dialog(pane.caption, tr("LC_HINT_KWT_COUNTER"));
 
 	/** Enabler. */
 	const enabled = checkbox_create(pane.toolbar, true);
@@ -1023,18 +1151,8 @@ function create_kwt_counter(parent)
 	/** Set current capacity. */
 	const subpane = create_bms_regulator(
 		pane.content, 0, 100, 1, -1, ID_BMS_KWT_COUNTER,
-		"Встановити поточну ємність(kWh)");
-	register_hint_dialog(subpane,
-		"Вcтановлення поточної ємності для лічильника дозволяє задати " +
-		"орієнтовне значення ємності батареї у кіловат-годинах. Це впливає на " +
-		"стрілочні показники залишку пробігу та на дисплей. " +
-		"Наприклад 12kWh при повній ємності 24kWt = 50% SOH.<p></p>" +
-		"Відношення: (поточна ємність) / (повна ємність) = (стан заряду (SOC) у відсотках)." +
-		"<p style='color: yellow;'>ПРИМІТКА</p>" +
-		"Повна ємність повинна бути встановлена для коректної роботи лічильника " +
-		"та для визначення стану заряду (SOC). " +
-		"Значення показника поточної ємності також буде перераховуватися автоматично " +
-		"під час їзди, чи під час заряджання.");
+		tr("LC_SET_CURRENT_CAPACITY"));
+	register_hint_dialog(subpane, tr("LC_HINT_SET_CURRENT_CAPACITY"));
 
 	/** Define set_value method for this pane object */
 	pane.set_value = subpane.content.regulator.set_value;
@@ -1044,18 +1162,8 @@ function create_kwt_counter(parent)
 
 function create_fake_bms(parent)
 {
-	const pane = subpane_create(parent.content, "Емуляція допоміжної BMS");
-	register_hint_dialog(pane,
-		"Зазвичай у заводській батареї стоїть 2 контролери заряду (BMS). " +
-		"При перепаковці батареї часто буває що другу (допоміжну) BMS " +
-		"не встановлюють і автомобіль може стати у помилку. " +
-		"Дане налаштування дозволяє 'відтворити' роботу цієї BMS так, " +
-		"що автомобіль не помітить її відсутності. Таким чином пов'язані " +
-		"помилки вилікуються.<p style='color: yellow;'>ПРИМІТКА</p>" +
-		"Це налаштування не дає ніякого ефекту у випадку, якщо друга BMS " +
-		"присутня, і не впливає на роботу другої BMS. Тому " +
-		"воно може бути увімкнене весь час по замовчуванню.",
-		);
+	const pane = subpane_create(parent.content, tr("LC_FAKE_BMS"));
+	register_hint_dialog(pane, tr("LC_HINT_FAKE_BMS"));
 
 	/** Enabler. */
 	const enabled = checkbox_create(pane.toolbar, true);
@@ -1070,7 +1178,7 @@ function create_fake_bms(parent)
 
 function create_emulators_pane()
 {
-	const pane = pane_create(document.body, "Емуляція");
+	const pane = pane_create(document.body, tr("LC_EMULATION"));
 	pane.kwt_counter = create_kwt_counter(pane);
 	pane.fake_bms = create_fake_bms(pane);
 
@@ -1082,7 +1190,7 @@ const bms_emulators = create_emulators_pane();
 /************************************************
  * ADDITIONAL
  ***********************************************/
-const bms_additional = pane_create(document.body, "Додатково");
+const bms_additional = pane_create(document.body, tr("LC_ADDITIONAL"));
 
  /************************************************
  * PINOUT
@@ -1093,52 +1201,44 @@ const bms_additional = pane_create(document.body, "Додатково");
 /************************************************
  * DISABLE WIFI
  ***********************************************/
-const disable_wifi = subpane_create(bms_additional.content, "Вимкнути Wi-Fi");
+const disable_wifi = subpane_create(bms_additional.content, tr("LC_DISABLE_WIFI"));
 disable_wifi.button = button_create(disable_wifi.content, "?");
 disable_wifi.button.on_press = function()
 {
-	const popup = popup_create(document.body, "Бажаєте вимкнути Wi-Fi?");
+	const popup = popup_create(document.body, tr("LC_DISABLE_WIFI_CONFIRM"));
 	popup.content.style.flexWrap = "nowrap";
 	popup.content.style.justifyContent = "center";
 	popup.content.style.padding = "1em";
 	
-	const yes = button_create(popup.content, "Так");
+	const yes = button_create(popup.content, tr("LC_YES"));
 	yes.ajax.id = 14;
 	yes.on_press = function() { popup.remove(); }
 	
-	const no = button_create(popup.content, "Ні");
+	const no = button_create(popup.content, tr("LC_NO"));
 	no.on_press = function() { popup.remove(); }
 }
-register_hint_dialog(disable_wifi,
-	"Вимкнення Wi-Fi дозволяє заощадити електроенергію, яку споживає CANBOX. " +
-	"Також попереджує зміну налаштувань іншими користувачами. " +
-	"Рекомендується вимикати Wi-Fi після встановлення налаштувань." +
-	"<p style='color: yellow;'>ПРИМІТКА</p>" +
-	"Wi-Fi автоматично вимикається через кілька хвилин відсутності актикності. " +
-	"Для повторного увімкнення поверніть ключ запалювання 3 рази з інтервалом у півсекунди, " +
-	"або перезавантажте живлення.");
+register_hint_dialog(disable_wifi, tr("LC_HINT_DISABLE_WIFI"));
 
 /************************************************
  * RESET ESP
  ***********************************************/
-const reload_canbox = subpane_create(bms_additional.content, "Перезавантажити CanBox");
+const reload_canbox = subpane_create(bms_additional.content, tr("LC_RELOAD_CANBOX"));
 reload_canbox.button = button_create(reload_canbox.content, "?");
 reload_canbox.button.on_press = function()
 {
-	const popup = popup_create(document.body, "Бажаєте перезавантажити CanBox?");
+	const popup = popup_create(document.body, tr("LC_RELOAD_CANBOX_CONFIRM"));
 	popup.content.style.flexWrap = "nowrap";
 	popup.content.style.justifyContent = "center";
 	popup.content.style.padding = "1em";
 	
-	const yes = button_create(popup.content, "Так");
+	const yes = button_create(popup.content, tr("LC_YES"));
 	yes.ajax.id = ID_BMS_RELOAD;
 	yes.on_press = function() { popup.remove(); }
 	
-	const no = button_create(popup.content, "Ні");
+	const no = button_create(popup.content, tr("LC_NO"));
 	no.on_press = function() { popup.remove(); }
 }
-register_hint_dialog(reload_canbox,
-	"Програмно перезавантажує CANBOX.");
+register_hint_dialog(reload_canbox, tr("LC_HINT_RELOAD_CANBOX"));
 
 /************************************************
  * DROP SETTINGS
@@ -1164,27 +1264,21 @@ drop_settings.button.on_press = function()
 /************************************************
  * UPDATE FIRMWARE
  ***********************************************/
-var update_firmware = subpane_create(bms_additional.content, "Оновленя прошивки");
+var update_firmware = subpane_create(bms_additional.content, tr("LC_UPDATE_FIRMWARE"));
 update_firmware.content.style.flexDirection = "column";
 update_firmware.style.flex = "100%";
 update_firmware.content.innerHTML = '\
 	<iframe name= "hidden-iframe" style= "display: none;"></iframe>\
 	<form method= "post" enctype= "multipart/form-data" target = "hidden-iframe" action = "update" style= "display:contents">\
 		@ENV:TARGET: @ENV:__CAN_FILTER_VERSION__<input type= "file" class = "layout" id= "file" name= "file">\
-		<button class = "button">Підтвердити</button>\
+		<button class = "button">' + tr("LC_CONFIRM_BTN") + '</button>\
 	</form>'
-register_hint_dialog(update_firmware,
-	"Дозволяє завантажити прошивку CANBOX у форматі .bin " +
-	"Цей метод вважається застарілим, але найбільш надійним, коли " +
-	"Інші методи прошивки через повітря не працюють." +
-	"<p style='color: yellow;'>ПРИМІТКА</p>" +
-	"Вихідний код проекту доступний за адресою: " +
-	"<a href='https://github.com/furdog/kangoo_can_filter'>https://github.com/furdog/kangoo_can_filter</a>");
+register_hint_dialog(update_firmware, tr("LC_HINT_UPDATE_FIRMWARE"));
 
 /************************************************
  * INIT
  ***********************************************/
-popup = popup_create(document.body, "Завантаження");
+popup = popup_create(document.body, tr("LC_LOADING"));
 loading_create(popup.content);
 popup.content.style.justifyContent = "center";
 popup.content.style.padding = "1em";

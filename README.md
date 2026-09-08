@@ -14,11 +14,15 @@ The project is not properly documented at the moment. May change in the future.
 - Remaining capacity doesn't need manual confirmation button now (caused confusion).
 - Added hint dialogs, very crucial for new users.
 
+- Added cheap, but fast translation (similar to nissan code).
+- Added serial port "condition", so it no longer needed to change file in order to override serial port.
+
 ## TODO
 > Since 07.09.2026 (short term tasks)
-- Language selection badge in the top right corner of screen, similar to hint tools.
+- ~~Language selection badge in the top right corner of screen, similar to hint tools.~~
 - Automatic language selection && language saved between sessions.
 - CAN FILTER Hardware revision selection option. So there are no longer hardware variants necessary.
+- Make proper makefile and build environment, ffs.
 
 > Since 07.09.2026 (long term tasks)
 - Automated hardware revision selection
@@ -29,6 +33,9 @@ The project is not properly documented at the moment. May change in the future.
 - Protobuf for websocket communication and dynamic web interface generation.
 - Migrate to ESP-IDF or other platforms
 
+> Since 08.09.2026 (long term tasks)
+- Refactor language selection badge and translation in general, remove hardcoded stuff.
+
 ## Implementation notes
 > 07.09.2026
 
@@ -36,3 +43,10 @@ From this moment i start to document all the implementation details and further 
 I will add additional sections as needed to explain architectural decisions, etc.
 
 For now i'll try to write changelog and todos as the first step to proper documentation.
+
+> 08.09.2026
+
+Added cheap, but fast translation (similar to nissan code).
+Disadvantages are simple: hardcoded badge, non modular, requires page reload to work.
+
+Added serial port "condition", so it no longer needed to change file in order to override serial port.

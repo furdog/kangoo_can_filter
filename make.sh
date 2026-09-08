@@ -10,7 +10,10 @@ fi
 ###############################################################################
 COMPILER=./tools/arduino-cli
 
-SERIAL_PORT=COM18
+if [ -z "${SERIAL_PORT+x}" ]; then
+SERIAL_PORT=COM103 #DEFAULT
+fi
+
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
