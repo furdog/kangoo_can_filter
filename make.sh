@@ -17,9 +17,6 @@ fi
 MONITOR_BAUD=115200
 OTA_IP="7.7.7.7"
 
-export LANG="default"
-#export LANG="english"
-
 # Targets:
 #export TARGET=can_filter_v1_native_esp32
 #export CANLIB_VARIANT=CAN_FILTER_CAN_ADAFRUIT #buggy, do not use
@@ -101,11 +98,7 @@ compile() {
 	#fi
 
 	# Replace environment variables inside web page
-	if [ "$LANG" == "english" ]; then
-		awk/ENV.awk web/index_english.html > index.gen.html
-	else
-		awk/ENV.awk web/index.html > index.gen.html
-	fi
+	awk/ENV.awk web/index.html > index.gen.html
 
 	# Compress WEB
 	gzip -9 -c index.gen.html > index.gen.html.gz

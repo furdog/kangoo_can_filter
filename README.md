@@ -7,15 +7,17 @@ This is repository contains esp32(arduino) version of ElektroBOX can filtering s
 The project is not properly documented at the moment. May change in the future.
 
 ## CHANGELOG
+> 07.09.2026
 > v2.13.0
-
 - Added proper CHANGELOG and implementationg notes and TODO.
 - Scaled percentage ratios 100x inside input fields for user сonvenience.
 - Remaining capacity doesn't need manual confirmation button now (caused confusion).
 - Added hint dialogs, very crucial for new users.
 
+> 08.09.2026
 - Added cheap, but fast translation (similar to nissan code).
 - Added serial port "condition", so it no longer needed to change file in order to override serial port.
+- Removed legacy english index (no longer needed)
 
 ## TODO
 > Since 07.09.2026 (short term tasks)
@@ -50,3 +52,6 @@ Added cheap, but fast translation (similar to nissan code).
 Disadvantages are simple: hardcoded badge, non modular, requires page reload to work.
 
 Added serial port "condition", so it no longer needed to change file in order to override serial port.
+
+I have also removed legacy english page, as well as removed
+english section from make.sh
