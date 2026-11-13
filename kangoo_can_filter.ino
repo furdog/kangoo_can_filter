@@ -68,12 +68,12 @@ static bool    fake_bms_enabled = false;
 #include "universal_board_driver.h"
 
 void bms_process_recuperation_buttons(clock_t delta_time_ms)
-{	
-	if (button_update(&bms_recuperation_button_minus, delta_time_ms) ==
+{
+	if (button_update(&bms_recuperation_button_plus, delta_time_ms) ==
 	    BUTTON_EVENT_HOLD) {
 		led_state = !led_state;
 		kangoo_can_filter_led_update();
-		
+
 		bms_recuperation_multiplier += 0.5;
 		if (bms_recuperation_multiplier > 2.0)
 			bms_recuperation_multiplier = 2.0;
@@ -81,7 +81,7 @@ void bms_process_recuperation_buttons(clock_t delta_time_ms)
 			commit_settings();
 	}
 
-	if (button_update(&bms_recuperation_button_plus, delta_time_ms) ==
+	if (button_update(&bms_recuperation_button_minus, delta_time_ms) ==
 	    BUTTON_EVENT_HOLD) {
 		led2_state = !led2_state;
 		kangoo_can_filter_led_update();
@@ -95,25 +95,25 @@ void bms_process_recuperation_buttons(clock_t delta_time_ms)
 }
 
 void bms_wifi_reset_sequence(bool key)
-{	
+{
 	/** Reset key counter if key was not turned for too long */
 	if (millis() - bms_ignition_key_timestamp > 2000)
 		bms_ignition_key_counter = 0;
-	
+
 	/** If the key state remain the same - exit. */
 	if (bms_ignition_key != key)
 		bms_ignition_key = key;
 	else
 		return;
-	
+
 	/** If the key not turned on - exit. */
 	if (!key)
 		return;
-	
-	/** Reset timestamp and increment key turn counter. */		
+
+	/** Reset timestamp and increment key turn counter. */
 	bms_ignition_key_timestamp = millis();
 	bms_ignition_key_counter++;
-	
+
 	/** If ignition key was turned 3 times,
 	 *  with less or equal than 2000ms intervals - reset wifi. */
 	if (bms_ignition_key_counter >= 3)
@@ -125,24 +125,24 @@ bool ubercharge()
 {
 	bool result = false;
 	bool reached_target = false;
-	
+
 	//if (bms_max_cell_v < bms_ubercharge && bms_charger_plugged_in)
 	if (bms_charger_plugged_in)
 		result = true;
-		
+
 	if (bms_max_cell_v > bms_ubercharge) {
 		reached_target = true;
 		bms_limit_charge_kwt -= 0.01;
 	} else {
 		bms_limit_charge_kwt += 0.01;
 	}
-	
-	/** Set bounds. */					
+
+	/** Set bounds. */
 	if (bms_limit_charge_kwt < 0.0) {
 		//if (bms_custom_capacity_enabled && reached_target)
 		//	bms_kwt_counter = bms_custom_capacity;
-			
-		bms_limit_charge_kwt = 0.0;	
+
+		bms_limit_charge_kwt = 0.0;
 		result = false;
 	} else if (bms_limit_charge_kwt_manually_enabled &&
 		   bms_limit_charge_kwt > bms_limit_charge_kwt_manually) {
@@ -150,7 +150,7 @@ bool ubercharge()
 	} else if (bms_limit_charge_kwt > 10.0) {
 		bms_limit_charge_kwt = 10.0;
 	}
-	
+
 	bms_ubercharge_active = result;
 	return result;
 }
@@ -201,7 +201,7 @@ void kangoo_fake_bms_send_frames()
 #endif
 
 void can_filter(struct kangoo_can_frame *frame)
-{	
+{
 	switch (frame->id) {
 	case 0x155:
 #ifdef FAKE_BMS_ENABLED
@@ -215,16 +215,16 @@ void can_filter(struct kangoo_can_frame *frame)
 		bms_current = (((frame->data[1] & 0x0F) << 8 | frame->data[2]) - 0x7D0) / 4.0;
 		bms_max_input_kwt = (frame->data[0] / 3.0);
 		bms_soc = (((uint16_t)frame->data[4] << 8) | frame->data[5]) / 400.0f;
-		
+
 		if (bms_filtering_enabled && bms_filter_general_errors_enabled)
 			frame->data[3] = 0x54;
 
 		if (bms_limit_charge_kwt_manually_enabled)
 			frame->data[0] = bms_limit_charge_kwt_manually * 3;
-			
+
 		if (bms_ubercharge_enabled && bms_ubercharge_active)
 			frame->data[0] = bms_limit_charge_kwt * 3;
-	
+
 		if (bms_custom_capacity_enabled) {
 			bms_soc = (bms_kwh / bms_custom_capacity) * 100.0;
 
@@ -240,7 +240,7 @@ void can_filter(struct kangoo_can_frame *frame)
 		/* Never activate ubercharge beyond 4.2, the car might explode*/
 		if (bms_ubercharge_enabled && bms_max_cell_v < 4.2f)
 			frame->data[0] = ubercharge() ? 0x11 : 0x12;
-		
+
 		if (bms_recuperation_multiplier_enabled) {
 			float new_recuperation;
 			new_recuperation = frame->data[2] * bms_recuperation_multiplier;
@@ -248,13 +248,13 @@ void can_filter(struct kangoo_can_frame *frame)
 		}
 
 		bms_max_recu_kwt = frame->data[2] / 2;
-		
+
 		/** Fix power limit error if batt health < 50% and temp < 50 */
 		if (bms_filtering_enabled && bms_filter_general_errors_enabled &&
 		    bms_soh < 50 && bms_temp < 50) {
 			/** mul max output power by 4 */
 			float new_max_output_power = frame->data[3] * 4.0;
-			
+
 			/** max output power can't be higher than 87kwt */
 			frame->data[3] = (new_max_output_power > 0xAF) ? 0xAF : new_max_output_power;
 		}
@@ -270,18 +270,18 @@ void can_filter(struct kangoo_can_frame *frame)
 	case 0x425:
 		/* Do not read bms_kwh when counter is enabled */
 		if (!bms_kwt_counter_enabled) {
-			bms_kwh = (((uint16_t)frame->data[0] & 0x0001) << 8 | frame->data[1]) / 10.0;		
+			bms_kwh = (((uint16_t)frame->data[0] & 0x0001) << 8 | frame->data[1]) / 10.0;
 		}
 
 		bms_min_cell_v = ((((uint16_t)frame->data[6] & 0x0001) << 8 | frame->data[7]) + 100) / 100.0;
 		bms_max_cell_v = (((((uint16_t)frame->data[4] & 0x0003) << 8 | frame->data[5]) >> 1) + 100) / 100.0;
-	
+
 		/** Ignore bms isolation resistance. */
 		if (bms_filtering_enabled && bms_filter_isolation_error_enabled) {
 			frame->data[3] = 0x9C;
 			frame->data[4] = 0x40 | (frame->data[4] & 3);
 		}
-		
+
 		/** Custom kwt counter */
 		bms_kwt_counter_elapsed = millis() - bms_kwt_counter_elapsed;
 
@@ -324,7 +324,7 @@ void can_filter(struct kangoo_can_frame *frame)
 		}
 
 		bms_kwt_counter_elapsed = millis();
-			
+
 		break;
 
 	case 0x426: {
@@ -373,14 +373,14 @@ void can_filter(struct kangoo_can_frame *frame)
 	case 0x659:
 		/** Break if no filtering allowed. */
 		if (!bms_filtering_enabled)
-			break;		
+			break;
 
 		frame->data[0] = 0;
 		frame->data[1] = 0;
 		frame->data[2] = 0;
 		frame->data[3] = 0;
 		break;
-	
+
 	case 0x79B:
 		/** Diagnostics request. */
 		if (frame->data[0] == 0x2 &&
@@ -388,17 +388,17 @@ void can_filter(struct kangoo_can_frame *frame)
 			diag_code = frame->data[2];
 			diag_counter = 0;
 		}
-	
+
 		break;
-	
+
 	case 0x7BB:
 		/** Diagnostics response (multimessage). */
 		if (diag_code == 0x61 && diag_counter == 1) {
 			frame->data[5] = bms_soh * 2;
 		}
-	
+
 		diag_counter++;
-	
+
 		break;
 	}
 }
@@ -457,7 +457,7 @@ void loop()
 		kangoo_fake_bms_recv_frame(&frame);
 #endif
 		kangoo_can_filter_send_frame(0, &frame);
-		
+
 		//digitalWrite(LED2_PIN, led2_state);
 	}
 

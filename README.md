@@ -55,3 +55,9 @@ Added serial port "condition", so it no longer needed to change file in order to
 
 I have also removed legacy english page, as well as removed
 english section from make.sh
+
+## Firmware upload log
+
+> 12.11.2026
+
+- flashed 20x kangoo_can_filter_h3_v2.13.0-2-g73278e0
